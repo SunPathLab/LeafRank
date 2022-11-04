@@ -3,10 +3,6 @@
 inputpar <- commandArgs(TRUE)
 if (length(inputpar) < 12) stop("Wrong number of input parameters: ''")
 
-library(ape)
-library(apTreeshape)
-library(Brobdingnag)
-
 #receive parameters
 rho <- inputpar[1]        #0.0005 # sampling probability
 d_t <- inputpar[2]        #0.01
