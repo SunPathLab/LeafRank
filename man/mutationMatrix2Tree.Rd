@@ -2,8 +2,7 @@
 % Please edit documentation in R/fitness_inference.R
 \name{mutationMatrix2Tree}
 \alias{mutationMatrix2Tree}
-\title{calculate the up messages along each branch to the up node
-branch index * up node state
+\title{prepare input of tree from mutation matrix
 mutation input, prepare phy
 the treeFile input (tab delimited) currently has this format
 mutationID   cell1    cell2   cell3   cell4  cell5  ...
@@ -20,8 +19,7 @@ mutationMatrix2Tree(treeFile)
 a phylo object of the tree, with the root edge being removed
 }
 \description{
-calculate the up messages along each branch to the up node
-branch index * up node state
+prepare input of tree from mutation matrix
 mutation input, prepare phy
 the treeFile input (tab delimited) currently has this format
 mutationID   cell1    cell2   cell3   cell4  cell5  ...

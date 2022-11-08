@@ -5,7 +5,14 @@
 \title{calculate the up messages along each branch to the up node
 branch index * up node state}
 \usage{
-calc_up_messages(phy, time_scale, argument, E_list, non_negativity_cutoff)
+calc_up_messages(
+  phy,
+  time_scale,
+  argument,
+  E_list,
+  T_vector,
+  non_negativity_cutoff
+)
 }
 \arguments{
 \item{phy}{a phylo object (tree object returned by nj)}

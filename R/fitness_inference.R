@@ -53,6 +53,7 @@ ith.Fitness <- function(phy, outFile, rho, d_t, time_scale, b_rate, d_rate, mu, 
     argument = list(b_rate, d_rate, mu)
     
     #start calculation
+    message("start: E_list")
     # E(t)
     E_sol <- integrate_phi_E(rho, T_vector, argument, d_t, non_negativity_cutoff)
     ## row: time, col: fitness
@@ -63,15 +64,19 @@ ith.Fitness <- function(phy, outFile, rho, d_t, time_scale, b_rate, d_rate, mu, 
     }
 
     # up messages
+    message("calculating up messages")
     up_messages=calc_up_messages(phy, time_scale, argument, E_list, T_vector, non_negativity_cutoff)
 
     # down messages
+    message("calculating down messages")
     down_messages=calc_down_messages(phy, time_scale, argument, E_list, up_messages, T_vector, non_negativity_cutoff)
 
     # marginal probabilities
+    message("calculating marginal probabilities")
     marginal_prob <- calc_marginal_probabilities(phy, time_scale, up_messages, down_messages, argument)
 
     # mean fitness
+    message("calculating mean fitness")
     mean_result <- mean_fitness(phy, marginal_prob, argument)
 
     # saveResult

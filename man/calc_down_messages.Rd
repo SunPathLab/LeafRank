@@ -10,6 +10,7 @@ calc_down_messages(
   argument,
   E_list,
   up_messages,
+  T_vector,
   non_negativity_cutoff
 )
 }
