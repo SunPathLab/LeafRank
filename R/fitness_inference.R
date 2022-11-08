@@ -63,10 +63,10 @@ ith.Fitness <- function(phy, outFile, rho, d_t, time_scale, b_rate, d_rate, mu, 
     }
 
     # up messages
-    up_messages=calc_up_messages(phy, time_scale, argument, E_list)
+    up_messages=calc_up_messages(phy, time_scale, argument, E_list, T_vector, non_negativity_cutoff)
 
     # down messages
-    down_messages=calc_down_messages(phy, time_scale, argument, E_list, up_messages)
+    down_messages=calc_down_messages(phy, time_scale, argument, E_list, up_messages, T_vector, non_negativity_cutoff)
 
     # marginal probabilities
     marginal_prob <- calc_marginal_probabilities(phy, time_scale, up_messages, down_messages, argument)

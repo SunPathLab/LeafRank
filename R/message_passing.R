@@ -9,7 +9,7 @@
 #' @return matrix of "messages" sent to a node by its progeny lineages, rows: node; columns: fitness type
 #' @importFrom Brobdingnag as.brobmat
 #' @export
-calc_up_messages <- function(phy, time_scale, argument, E_list, non_negativity_cutoff){
+calc_up_messages <- function(phy, time_scale, argument, E_list, T_vector, non_negativity_cutoff){
   
   edge_data <- phy$edge
   length_data <- phy$edge.length
@@ -57,7 +57,7 @@ calc_up_messages <- function(phy, time_scale, argument, E_list, non_negativity_c
           ######
           ## i: branch number
           ## each element represents a state of up node
-          up_messages[i,] <- log(rowSums(integrate_prop(rho, argument, t, t_1, E_list, T_vector_1, d_t, non_negativity_cutoff)))
+          up_messages[i,] <- log(rowSums(integrate_prop(rho, argument, t, t_1, E_list, T_vector, d_t, non_negativity_cutoff)))
           ######
           
           jobs_done <- jobs_done + 1
@@ -76,7 +76,7 @@ calc_up_messages <- function(phy, time_scale, argument, E_list, non_negativity_c
           
           ######
           ## up node * down node
-          temp_2 <- integrate_prop(rho, argument, t, t_1, E_list, T_vector_1, d_t, non_negativity_cutoff)
+          temp_2 <- integrate_prop(rho, argument, t, t_1, E_list, T_vector, d_t, non_negativity_cutoff)
           ######
           
           temp_1 <- Brobdingnag::as.brobmat(temp_1)
@@ -112,7 +112,7 @@ calc_up_messages <- function(phy, time_scale, argument, E_list, non_negativity_c
 #' @return matrix of "messages" sent to a node by its ancestral and sibling lineages, rows: node; columns: fitness type
 #' @importFrom Brobdingnag as.brob
 #' @export
-calc_down_messages <- function(phy, time_scale, argument, E_list, up_messages, non_negativity_cutoff){
+calc_down_messages <- function(phy, time_scale, argument, E_list, up_messages, T_vector, non_negativity_cutoff){
   
   edge_data <- phy$edge
   length_data <- phy$edge.length
@@ -160,7 +160,7 @@ calc_down_messages <- function(phy, time_scale, argument, E_list, up_messages, n
         
  
         t <- length_data[i]/time_scale
-        temp_1 <- integrate_prop(rho, argument, t, t_1, E_list, T_vector_1, d_t, non_negativity_cutoff)
+        temp_1 <- integrate_prop(rho, argument, t, t_1, E_list, T_vector, d_t, non_negativity_cutoff)
 
 
 
