@@ -33,6 +33,35 @@ mutationMatrix2Tree <- function(treeFile) {
 }
 
 
+#' prepare input of tree from distance matrix
+#' distance matrix input, prepare phy
+#' the distanceMatrix input (tab delimited) currently has this format
+#'             cell1    cell2   cell3   cell4  cell5  ...
+#' cell1          0        123     11       450     21    ...
+#' cell2          123      0       34       34      45    ...
+#' ...
+#' the last cell represents the normal cell
+#' @param distanceMatrix the mutationMatrix file input (comma delimited)
+#' @return a phylo object of the tree, with the root edge being removed
+#' @importFrom ape nj 
+#' @importFrom ape drop.tip
+#' @importFrom ape root
+#' @export
+distanceMatrix2Tree <- function(distanceMatrix) {
+  M <- read.delim(distanceMatrix, header=F, sep=",")
+  M <- as.numeric(unlist(M))
+  matrixSize <- sqrt(length(M))
+  M <- matrix(M, ncol = matrixSize, nrow = matrixSize)
+  dimnames(M) <- list(1:matrixSize, 1:matrixSize)
+  phy <- ape::nj(M)
+  phy.rooted <- ape::root(phy, outgroup = matrixSize, resolve.root = TRUE)
+  phy <- ape::drop.tip(phy.rooted, matrixSize, trim.internal = TRUE, subtree = FALSE)
+  return(phy)
+}
+
+
+
+
 
 #' pipeline to do fitness inference
 #' 
@@ -53,7 +82,6 @@ ith.Fitness <- function(phy, outFile, rho, d_t, time_scale, b_rate, d_rate, mu, 
     argument = list(b_rate, d_rate, mu)
     
     #start calculation
-    message("start: E_list")
     # E(t)
     E_sol <- integrate_phi_E(rho, T_vector, argument, d_t, non_negativity_cutoff)
     ## row: time, col: fitness
@@ -64,19 +92,15 @@ ith.Fitness <- function(phy, outFile, rho, d_t, time_scale, b_rate, d_rate, mu, 
     }
 
     # up messages
-    message("calculating up messages")
-    up_messages=calc_up_messages(phy, time_scale, argument, E_list, T_vector, non_negativity_cutoff)
+    up_messages=calc_up_messages(phy, time_scale, argument, E_list)
 
     # down messages
-    message("calculating down messages")
-    down_messages=calc_down_messages(phy, time_scale, argument, E_list, up_messages, T_vector, non_negativity_cutoff)
+    down_messages=calc_down_messages(phy, time_scale, argument, E_list, up_messages)
 
     # marginal probabilities
-    message("calculating marginal probabilities")
     marginal_prob <- calc_marginal_probabilities(phy, time_scale, up_messages, down_messages, argument)
 
     # mean fitness
-    message("calculating mean fitness")
     mean_result <- mean_fitness(phy, marginal_prob, argument)
 
     # saveResult
