@@ -107,7 +107,8 @@ ith.Fitness <- function(phy, outFile, rho, d_t, time_scale, b_rate, d_rate, mu, 
     mean_result <- mean_fitness(phy, marginal_prob, argument)
 
     # saveResult
-    saveRDS(mean_result, file=outFile)
+    outRes = list(phylo = phy, meanFitness = mean_result, upMessages = up_messages, downMessages = down_messages, marginalProb = marginal_prob)
+    saveRDS(outRes, file=outFile)
 
     return("success!")
 }
