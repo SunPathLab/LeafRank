@@ -296,15 +296,18 @@ up_m_sib <- function(up_messages, down_messages, up_node, phy, argument, i){
   sol <- replicate(fitness_count,0)
   sol <- Brobdingnag::as.brob(sol)
   
-  for (i in 2:(fitness_count-1)) {
-    temp_1 <- up_messages[sibling_branch,i]+down_messages[parent_branch,i]+log(2*b[i])
-    temp_2 <- up_messages[sibling_branch,(i+1)]+down_messages[parent_branch,i]+log(mu[i])
-    temp_3 <- up_messages[sibling_branch,(i-1)]+down_messages[parent_branch,(i-1)]+log(mu[i])
-    temp_1 <- exp(Brobdingnag::as.brob(temp_1))
-    temp_2 <- exp(Brobdingnag::as.brob(temp_2))
-    temp_3 <- exp(Brobdingnag::as.brob(temp_3))
-    sol[i] <- temp_1 + temp_2 + temp_3
+  if (fitness_count>2){
+    for (i in 2:(fitness_count-1)) {
+      temp_1 <- up_messages[sibling_branch,i]+down_messages[parent_branch,i]+log(2*b[i])
+      temp_2 <- up_messages[sibling_branch,(i+1)]+down_messages[parent_branch,i]+log(mu[i])
+      temp_3 <- up_messages[sibling_branch,(i-1)]+down_messages[parent_branch,(i-1)]+log(mu[i])
+      temp_1 <- exp(Brobdingnag::as.brob(temp_1))
+      temp_2 <- exp(Brobdingnag::as.brob(temp_2))
+      temp_3 <- exp(Brobdingnag::as.brob(temp_3))
+      sol[i] <- temp_1 + temp_2 + temp_3
+    }
   }
+  
 
   ## target branch starts at state 1
   i <- 1

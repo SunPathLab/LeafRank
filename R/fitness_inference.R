@@ -112,3 +112,36 @@ ith.Fitness <- function(phy, outFile, rho, d_t, time_scale, b_rate, d_rate, mu, 
 
     return("success!")
 }
+
+
+
+
+
+#' Compare the ranking inferred by two different sets of parameters
+#'
+#' @param result_1 mean fitness inferred by the first set of parameters
+#' @param result_2 mean fitness inferred by the second set of parameters
+#' @return a Kendall-tau like distance
+#' @export
+rank_diff <- function(result_1, result_2)
+{
+  x_1 <- length(result_1)
+  x_1 <- (x_1+1)/2  # only check mean fitness for leaves
+  kendall_dis <- 0
+  
+  for (i in 1:x_1){
+    for (j in 1:x_1){
+      if ((result_1[i]>result_1[j]) & (result_2[i]<result_2[j])) {
+        kendall_dis <- kendall_dis + 1
+        print(i)
+        print(j)
+      }
+      if ((result_1[i]<result_1[j]) & (result_2[i]>result_2[j])) {
+        kendall_dis <- kendall_dis + 1
+        print(i)
+        print(j)
+      } 
+    }
+  }
+  return (kendall_dis)
+}
