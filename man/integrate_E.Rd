@@ -3,8 +3,8 @@
 \name{integrate_E}
 \alias{integrate_E}
 \title{Calculate Extinction density over time
-note that E(t) is indepedent of tree structure
-solve differential equations using Runge-Kutta methods}
+note that E(t) is independent of tree structure
+solve differential equations using Runge-Kutta methods (https://en.wikipedia.org/wiki/Runge\%E2\%80\%93Kutta_methods)}
 \usage{
 integrate_E(f_initial, T_vector, argument, d_t, non_negativity_cutoff)
 }
@@ -13,7 +13,7 @@ integrate_E(f_initial, T_vector, argument, d_t, non_negativity_cutoff)
 
 \item{T_vector}{time discretization}
 
-\item{argument}{a list of birth, death and mutation data}
+\item{argument}{a list of birth, death and mutation data (b <- argument[\link{1}]; d <- argument[\link{2}]; mu <- argument[\link{3}])}
 
 \item{d_t}{step size for integration}
 }
@@ -22,6 +22,6 @@ numerically calculated E(t) over the time vector, a matrix with rows representin
 }
 \description{
 Calculate Extinction density over time
-note that E(t) is indepedent of tree structure
-solve differential equations using Runge-Kutta methods
+note that E(t) is independent of tree structure
+solve differential equations using Runge-Kutta methods (https://en.wikipedia.org/wiki/Runge\%E2\%80\%93Kutta_methods)
 }

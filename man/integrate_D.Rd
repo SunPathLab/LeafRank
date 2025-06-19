@@ -2,8 +2,8 @@
 % Please edit documentation in R/solve_density.R
 \name{integrate_D}
 \alias{integrate_D}
-\title{integrate_D is a function to solve differential equations using Runge-Kutta methods
-D(t) can be viewed as the density that a node at state i leads to the sampled tree
+\title{integrate_D is a function to solve differential equations using Runge-Kutta methods (https://en.wikipedia.org/wiki/Runge\%E2\%80\%93Kutta_methods)
+D(t) can be viewed as the density that a node at state i leads to the sampled (sub-)tree
 similar as the "branch propagator" defined in Neher's paper (given an ancestor with fitness y at time t,
 the prob that the child is with fitness x and time t')}
 \usage{
@@ -25,7 +25,7 @@ integrate_D(
 
 \item{argument}{a list of birth, death and mutation data}
 
-\item{E_list}{precalculated E(t), acorss a list of different types}
+\item{E_list}{precalculated E(t), across a list of different types}
 
 \item{ini_rank}{only keeps the possible transition between state}
 
@@ -37,8 +37,8 @@ integrate_D(
 numerically calculated D(t) over the time vector, a matrix with rows representing time and columns representing fitness types.
 }
 \description{
-integrate_D is a function to solve differential equations using Runge-Kutta methods
-D(t) can be viewed as the density that a node at state i leads to the sampled tree
+integrate_D is a function to solve differential equations using Runge-Kutta methods (https://en.wikipedia.org/wiki/Runge\%E2\%80\%93Kutta_methods)
+D(t) can be viewed as the density that a node at state i leads to the sampled (sub-)tree
 similar as the "branch propagator" defined in Neher's paper (given an ancestor with fitness y at time t,
 the prob that the child is with fitness x and time t')
 }

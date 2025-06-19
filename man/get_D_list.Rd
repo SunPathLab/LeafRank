@@ -15,7 +15,7 @@ get_D_list(rho, T_vector, d_t, argument, E_list, t_1, non_negativity_cutoff)
 
 \item{argument}{a list of birth, death and mutation data}
 
-\item{E_list}{precalculated E_list (see the next step)}
+\item{E_list}{precalculated E_list}
 
 \item{t_1}{time of the down node (starting node)}
 }

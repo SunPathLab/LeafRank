@@ -2,7 +2,7 @@
 % Please edit documentation in R/solve_density.R
 \name{derivative_E}
 \alias{derivative_E}
-\title{calculate the derivative of Extinction density}
+\title{calculate the derivative of Extinction density (a linear mutation model, acquire mutations in order)}
 \usage{
 derivative_E(phi, argument)
 }
@@ -15,5 +15,5 @@ derivative_E(phi, argument)
 vector of calculated derivatives of E(t)
 }
 \description{
-calculate the derivative of Extinction density
+calculate the derivative of Extinction density (a linear mutation model, acquire mutations in order)
 }

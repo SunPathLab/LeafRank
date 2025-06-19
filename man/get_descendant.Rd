@@ -2,8 +2,8 @@
 % Please edit documentation in R/tree_utils.R
 \name{get_descendant}
 \alias{get_descendant}
-\title{get the ids of descendants of an internal node
-enter an external node can lead to infinite loop (modify later)}
+\title{get the ids of external nodes that are descendants of an internal node
+return null if the input node is an external node}
 \usage{
 get_descendant(phy, node_id)
 }
@@ -16,6 +16,6 @@ get_descendant(phy, node_id)
 vector ids of the two children nodes
 }
 \description{
-get the ids of descendants of an internal node
-enter an external node can lead to infinite loop (modify later)
+get the ids of external nodes that are descendants of an internal node
+return null if the input node is an external node
 }

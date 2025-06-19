@@ -16,19 +16,19 @@ calc_up_messages <- function(phy, time_scale, argument, E_list, T_vector, non_ne
   num_of_node <- node_num(phy)
   num_of_branch <- dim(edge_data)[1]
   
-  ## check if the up message from a node has been calculated
+  ## cal_status is used to check if the up message from a node has been calculated
   cal_status <- numeric(num_of_node)
   
   b <- argument[[1]]
   fitness_count <- length(b)
   
-  up_messages <-  replicate(fitness_count, numeric(num_of_branch))
+  up_messages <-  replicate(fitness_count, numeric(num_of_branch))  ## num_of_branch-by-fitness_count matrix
   
-  time_estimate <- node_time_to_present(phy, time_scale)
+  time_estimate <- node_time_to_present(phy, time_scale) ## Approximated time of each node, with time scaled
   
   jobs_done <- 0
   while (jobs_done < num_of_branch) {
-    print(jobs_done)
+    ## print(jobs_done)
     for (i in 1:num_of_branch) {
       ## print(i)
       up_node <- edge_data[i,1]
@@ -38,12 +38,11 @@ calc_up_messages <- function(phy, time_scale, argument, E_list, T_vector, non_ne
       
       if (cal_status[down_node]==0){
         
-        cal_ready <- 1   # if the other required messages are calculated
-        ## if it is internal
-        if (node_status(phy, down_node)){
+        cal_ready <- 1   
+        if (node_status(phy, down_node)){ ## if it is internal
           for (j in 1:num_of_branch){
             if (edge_data[j,1]==down_node){
-              cal_ready <- cal_ready * cal_status[edge_data[j,2]]
+              cal_ready <- cal_ready * cal_status[edge_data[j,2]] # check if the other required messages are calculated
             }
           }
         }
@@ -53,6 +52,7 @@ calc_up_messages <- function(phy, time_scale, argument, E_list, T_vector, non_ne
 
           # scale the time to represent the actual time of growth of the tumor
           t <- length_data[i]/time_scale
+
           
           ######
           ## i: branch number
@@ -66,6 +66,7 @@ calc_up_messages <- function(phy, time_scale, argument, E_list, T_vector, non_ne
           
           
           t <- length_data[i]/time_scale
+
           
           ######
           ## each element represents a state of down node
@@ -249,7 +250,7 @@ up_m_des <- function(up_messages, down_node, phy, argument) {
 
   
   i <- fitness_count
-  temp_1 <- up_messages[index_1,i]+up_messages[index_2,i]+log(2*(b[i]+mu[i]))
+  temp_1 <- up_messages[index_1,i]+up_messages[index_2,i]+log(2*b[i])
   temp_1 <- exp(Brobdingnag::as.brob(temp_1))
   sol[i] <- temp_1
   
@@ -397,7 +398,7 @@ calc_marginal_probabilities <- function(phy, time_scale, up_messages, down_messa
         
         for (k in 1:fitness_count){
           if (k==fitness_count){
-            temp_2[k] <- exp(Brobdingnag::as.brob(up_messages[branch_1, k])) * exp(Brobdingnag::as.brob(up_messages[branch_2, k])) * 2 * (b[k]+mu[k])
+            temp_2[k] <- exp(Brobdingnag::as.brob(up_messages[branch_1, k])) * exp(Brobdingnag::as.brob(up_messages[branch_2, k])) * 2 * (b[k])
           } else {
             temp_2[k] <- exp(Brobdingnag::as.brob(up_messages[branch_1, k])) * exp(Brobdingnag::as.brob(up_messages[branch_2, k])) * 2 * b[k]
             temp_2[k] <- temp_2[k] + exp(Brobdingnag::as.brob(up_messages[branch_1, (k+1)])) * exp(Brobdingnag::as.brob(up_messages[branch_2, k])) * mu[k]
@@ -449,7 +450,7 @@ calc_marginal_probabilities <- function(phy, time_scale, up_messages, down_messa
 #' calculate the marginal distribution for each node
 #' 
 #' @param phy a phylo object (tree object returned by nj)
-#' @param marginal_prob a matrix of marginal probablity distribution on fitness type (column) for each node (row)
+#' @param marginal_prob a matrix of marginal probability distribution on fitness type (column) for each node (row)
 #' @param argument a list of birth, death and mutation data
 #' @return vector of mean fitness of each node  
 #' @export 

@@ -2,8 +2,8 @@
 % Please edit documentation in R/tree_utils.R
 \name{node_time_to_present}
 \alias{node_time_to_present}
-\title{rescale the branch length (measured by mutations) to the real time scale
-time = 0 for leaves}
+\title{transform the tree into an ultrametric tree
+re-scale the branch length (measured by mutations) to the real time scale}
 \usage{
 node_time_to_present(phy, time_scale)
 }
@@ -16,6 +16,5 @@ node_time_to_present(phy, time_scale)
 vector of normalized branch lengths in real time scale
 }
 \description{
-rescale the branch length (measured by mutations) to the real time scale
 time = 0 for leaves
 }

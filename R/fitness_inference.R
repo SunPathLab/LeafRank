@@ -1,3 +1,4 @@
+#‘ Apply the neighbor joining method to reconstruct the genealogical tree (phy)
 #' prepare input of tree from mutation matrix
 #' mutation input, prepare phy
 #' the treeFile input (tab delimited) currently has this format
@@ -31,6 +32,8 @@ mutationMatrix2Tree <- function(treeFile) {
     phy <- ape::drop.tip(phy.rooted, "normal", trim.internal = TRUE, subtree = FALSE)
     return(phy)
 }
+
+
 
 
 #' prepare input of tree from distance matrix

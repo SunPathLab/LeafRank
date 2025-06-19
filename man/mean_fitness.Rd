@@ -9,7 +9,7 @@ mean_fitness(phy, marginal_prob, argument)
 \arguments{
 \item{phy}{a phylo object (tree object returned by nj)}
 
-\item{marginal_prob}{a matrix of marginal probablity distribution on fitness type (column) for each node (row)}
+\item{marginal_prob}{a matrix of marginal probability distribution on fitness type (column) for each node (row)}
 
 \item{argument}{a list of birth, death and mutation data}
 }

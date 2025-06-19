@@ -13,7 +13,7 @@ derivative_D(phi, eta, argument, ini_rank)
 
 \item{argument}{a list of birth, death and mutation data}
 
-\item{ini_rank}{only keeps the possible transition between states}
+\item{ini_rank}{only keeps the possible transition between states (the density from higher rank to lower rank is zero)}
 }
 \value{
 vector of calculated derivatives of D

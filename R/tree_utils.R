@@ -22,7 +22,8 @@ node_status <- function(phy, node_id){
 }
 
 
-#' Return the depth of each nodes (except the root)
+
+#' Return the depth of each nodes (depth measures the distance between the root and a node)
 #'
 #' @param phy a phylo object (tree object returned by nj)
 #' @return vector of depths of nodes
@@ -60,8 +61,9 @@ get_depth <- function(phy){
 }
 
 
-#' get the ids of descendants of an internal node
-#' enter an external node can lead to infinite loop (modify later)
+
+#' get the ids of external nodes that are descendants of an internal node
+#' return null if the input node is an external node
 #'
 #' @param phy a phylo object (tree object returned by nj)
 #' @param node_id the id of the node of interest
@@ -71,29 +73,36 @@ get_descendant <- function(phy, node_id){
   edge_data <- phy$edge
   num_of_branch <- dim(edge_data)[1]
   descendants <- c()
-  parents <- c(node_id)
-  while (length(parents)>0){
-    remove_list <- c()
-    add_list <- c()
-    for (i in 1:num_of_branch){
-      up_node <- edge_data[i,1]
-      down_node <- edge_data[i,2]
-      if (is.element(up_node, parents) & (!node_status(phy, down_node))){
-        descendants <- c(descendants, down_node)
-        remove_list <- c(remove_list, up_node)
-      } else if (is.element(up_node, parents) & (node_status(phy, down_node))){
-        add_list <- c(add_list, down_node)
-        remove_list <- c(remove_list, up_node)
+  if (node_status(phy, node_id)){
+    parents <- c(node_id)
+    while (length(parents)>0){
+      remove_list <- c()
+      add_list <- c()
+      for (i in 1:num_of_branch){
+        up_node <- edge_data[i,1]
+        down_node <- edge_data[i,2]
+        if (is.element(up_node, parents) & (!node_status(phy, down_node))){
+          descendants <- c(descendants, down_node)
+          remove_list <- c(remove_list, up_node)
+        } else if (is.element(up_node, parents) & (node_status(phy, down_node))){
+          add_list <- c(add_list, down_node)
+          remove_list <- c(remove_list, up_node)
+        }
       }
+      parents = parents[!(parents %in% remove_list)]
+      parents <- c(parents, add_list)
     }
-    parents = parents[!(parents %in% remove_list)]
-    parents <- c(parents, add_list)
+    return (descendants)
+  } else{
+    return (descendants) 
   }
-  return (descendants)  
 }
 
 
-#' rescale the branch length (measured by mutations) to the real time scale
+
+#' transform the tree into an ultrametric tree
+#' re-scale the branch length (measured by mutations) to the real time scale
+#' 
 #' time = 0 for leaves
 #' 
 #' @param phy a phylo object (tree object returned by nj)
@@ -122,9 +131,7 @@ node_time_to_present <- function(phy, time_scale){
 }
 
 
-#' get the sibling branch of a branch
-#' need to optimize
-#' 
+
 #' @param phy a phylo object (tree object returned by nj)
 #' @return vector of branch ids corresponding to the sibling branch (of ordered branch ids)
 #' @export
@@ -133,7 +140,7 @@ get_sibling <- function(phy){
   num_of_node <- node_num(phy)
   num_of_branch <- dim(edge_data)[1]
   sibling_data <- numeric(num_of_branch)
-  for (i in 1:num_of_branch){      # foreach branch id
+  for (i in 1:num_of_branch){      # for each branch id
     up_node <- edge_data[i,1]
     down_node <- edge_data[i,2]
     for (j in 1:num_of_branch) {

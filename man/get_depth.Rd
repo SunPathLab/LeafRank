@@ -2,7 +2,7 @@
 % Please edit documentation in R/tree_utils.R
 \name{get_depth}
 \alias{get_depth}
-\title{Return the depth of each nodes (except the root)}
+\title{Return the depth of each nodes (depth measures the distance between the root and a node)}
 \usage{
 get_depth(phy)
 }
@@ -13,5 +13,5 @@ get_depth(phy)
 vector of depths of nodes
 }
 \description{
-Return the depth of each nodes (except the root)
+Return the depth of each nodes (depth measures the distance between the root and a node)
 }

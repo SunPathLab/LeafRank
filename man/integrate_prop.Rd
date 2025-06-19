@@ -2,7 +2,7 @@
 % Please edit documentation in R/solve_density.R
 \name{integrate_prop}
 \alias{integrate_prop}
-\title{calculate the propagator for a branch}
+\title{calculate the propagator for a branch, a propagator is the probability density from an ancestral node to a child}
 \usage{
 integrate_prop(
   rho,
@@ -34,5 +34,5 @@ integrate_prop(
 a matrix of integrated D values of a branch (ancestral type to the child type)
 }
 \description{
-calculate the propagator for a branch
+calculate the propagator for a branch, a propagator is the probability density from an ancestral node to a child
 }
