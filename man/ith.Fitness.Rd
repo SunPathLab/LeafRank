@@ -10,11 +10,12 @@ ith.Fitness(
   rho,
   d_t,
   time_scale,
-  b_rate,
-  d_rate,
+  b_rates,
+  d_rates,
   mu,
   T_vector,
-  non_negativity_cutoff
+  non_negativity_cutoff,
+  n_threads = 1
 )
 }
 \arguments{
@@ -28,15 +29,15 @@ ith.Fitness(
 
 \item{time_scale}{time normalization factor}
 
-\item{b_rate}{birth rates for types (vector)}
-
-\item{d_rate}{death rates for types (vector)}
-
 \item{mu}{driver mutation rates for types (vector)}
 
 \item{T_vector}{time discretization (vector)}
 
-\item{non_negativity_cutoff}{}
+\item{n_threads}{number of threads for parallel computing (int, default 1)}
+
+\item{b_rate}{birth rates for types (vector)}
+
+\item{d_rate}{death rates for types (vector)}
 }
 \value{
 the mean fitness vector

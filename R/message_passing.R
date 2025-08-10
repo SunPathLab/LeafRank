@@ -4,13 +4,19 @@
 #' @param phy a phylo object (tree object returned by nj)
 #' @param time_scale time normalization factor
 #' @param argument a list of birth, death and mutation data
+#' @param rho sampling probability
+#' @param d_t step size for integration
 #' @param E_list pre-calculated E_list (see the next step)
 #' @param non_negativity_cutoff
+#' @param n_threads number of threads for parallele computing
 #' @return matrix of "messages" sent to a node by its progeny lineages, rows: node; columns: fitness type
 #' @importFrom Brobdingnag as.brobmat
+#' @importFrom foreach %dopar%
+#' @importFrom foreach foreach
+#' @importFrom doParallel registerDoParallel
 #' @export
-calc_up_messages <- function(phy, time_scale, argument, E_list, T_vector, non_negativity_cutoff){
-  
+calc_up_messages <- function(phy, time_scale, argument, rho, d_t, E_list, T_vector, non_negativity_cutoff, n_threads){
+    
   edge_data <- phy$edge
   length_data <- phy$edge.length
   num_of_node <- node_num(phy)
@@ -26,11 +32,28 @@ calc_up_messages <- function(phy, time_scale, argument, E_list, T_vector, non_ne
   
   time_estimate <- node_time_to_present(phy, time_scale) ## Approximated time of each node, with time scaled
   
+  
   jobs_done <- 0
+  # Load needed packages for parallele computing
+  requireNamespace("foreach")
+  requireNamespace("doParallel")
+  # Setup threads
+  cl <- parallel::makeCluster(n_threads)
+  doParallel::registerDoParallel(cl)
+  int_list <- foreach::foreach (i =1:num_of_branch, .export = c("integrate_prop", "get_D_list","integrate_phi_D", "integrate_D","derivative_D")) %dopar% {
+    up_node <- edge_data[i,1]
+    down_node <- edge_data[i,2]
+    t_1 <- time_estimate[down_node]
+    t <- length_data[i]/time_scale
+    temp <- integrate_prop(rho, argument, t, t_1, E_list, T_vector, d_t, non_negativity_cutoff)
+    temp
+  }
+  parallel::stopCluster(cl)  
+  
   while (jobs_done < num_of_branch) {
-    ## print(jobs_done)
+    #print(jobs_done)
     for (i in 1:num_of_branch) {
-      ## print(i)
+      #print(i)
       up_node <- edge_data[i,1]
       down_node <- edge_data[i,2]
       t_1 <- time_estimate[down_node]
@@ -49,24 +72,25 @@ calc_up_messages <- function(phy, time_scale, argument, E_list, T_vector, non_ne
         
         ## if the branch connects to an external node
         if (!node_status(phy, down_node)) {
-
+          
           # scale the time to represent the actual time of growth of the tumor
           t <- length_data[i]/time_scale
-
+          
           
           ######
           ## i: branch number
           ## each element represents a state of up node
-          up_messages[i,] <- log(rowSums(integrate_prop(rho, argument, t, t_1, E_list, T_vector, d_t, non_negativity_cutoff)))
+          up_messages[i,] <- log(rowSums(int_list[[i]]))
           ######
           
           jobs_done <- jobs_done + 1
+          print(i)
           cal_status[down_node] <- 1
         } else if (cal_ready) {   #internal, ready to be calculated
           
           
           t <- length_data[i]/time_scale
-
+          
           
           ######
           ## each element represents a state of down node
@@ -77,12 +101,12 @@ calc_up_messages <- function(phy, time_scale, argument, E_list, T_vector, non_ne
           
           ######
           ## up node * down node
-          temp_2 <- integrate_prop(rho, argument, t, t_1, E_list, T_vector, d_t, non_negativity_cutoff)
+          temp_2 <- int_list[[i]]
           ######
           
           temp_1 <- Brobdingnag::as.brobmat(temp_1)
           temp_2 <- Brobdingnag::as.brobmat(temp_2)
-
+          
           ## temp_3 final
           for (k in 1:fitness_count){
             temp_3 <- 0
@@ -93,7 +117,8 @@ calc_up_messages <- function(phy, time_scale, argument, E_list, T_vector, non_ne
           }
           jobs_done <- jobs_done + 1
           cal_status[down_node] <- 1
-
+          print(i)
+          
         }
       }
     }
@@ -107,13 +132,19 @@ calc_up_messages <- function(phy, time_scale, argument, E_list, T_vector, non_ne
 #' @param phy a phylo object (tree object returned by nj)
 #' @param time_scale time normalization factor
 #' @param argument a list of birth, death and mutation data
+#' @param rho sampling probability
+#' @param d_t step size for integration
 #' @param E_list pre-calculated E_list (see the next step)
 #' @param up_messages pre-calculated up messages
 #' @param non_negativity_cutoff
+#' @param n_threads number of threads for parallel computing
 #' @return matrix of "messages" sent to a node by its ancestral and sibling lineages, rows: node; columns: fitness type
 #' @importFrom Brobdingnag as.brob
+#' @importFrom foreach %dopar%
+#' @importFrom foreach foreach
+#' @importFrom doParallel registerDoParallel
 #' @export
-calc_down_messages <- function(phy, time_scale, argument, E_list, up_messages, T_vector, non_negativity_cutoff){
+calc_down_messages <- function(phy, time_scale, argument, rho, d_t, E_list, up_messages, T_vector, non_negativity_cutoff, n_threads){
   
   edge_data <- phy$edge
   length_data <- phy$edge.length
@@ -141,7 +172,22 @@ calc_down_messages <- function(phy, time_scale, argument, E_list, up_messages, T
   }
   
   jobs_done <- 0
-  
+  # Load needed packages for parallele computing
+  requireNamespace("foreach")
+  requireNamespace("doParallel")
+  # Setup threads
+  cl <- parallel::makeCluster(n_threads)
+  doParallel::registerDoParallel(cl)
+
+  int_list <- foreach (i =1:num_of_branch, .export = c("integrate_prop", "get_D_list","integrate_phi_D", "integrate_D","derivative_D")) %dopar% {
+    up_node <- edge_data[i,1]
+    down_node <- edge_data[i,2]
+    t_1 <- time_estimate[down_node]
+    t <- length_data[i]/time_scale
+    temp <- integrate_prop(rho, argument, t, t_1, E_list, T_vector, d_t, non_negativity_cutoff)
+    temp
+  }
+  parallel::stopCluster(cl)
   
   while (jobs_done < num_of_branch){
     ## print(jobs_done)
@@ -161,7 +207,7 @@ calc_down_messages <- function(phy, time_scale, argument, E_list, up_messages, T
         
  
         t <- length_data[i]/time_scale
-        temp_1 <- integrate_prop(rho, argument, t, t_1, E_list, T_vector, d_t, non_negativity_cutoff)
+        temp_1 <- int_list[[i]]
 
 
 

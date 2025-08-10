@@ -27,6 +27,7 @@ mutationMatrix2Tree <- function(treeFile) {
         M[sn1,sn2] = sum(treeData[,sn1] != treeData[,sn2])
         M[sn2,sn1] = sum(treeData[,sn2] != treeData[,sn1])
     }
+    print(dim(M))
     phy <- ape::nj(M)
     phy.rooted <- ape::root(phy, outgroup = "normal", resolve.root = TRUE)
     phy <- ape::drop.tip(phy.rooted, "normal", trim.internal = TRUE, subtree = FALSE)
@@ -75,12 +76,13 @@ distanceMatrix2Tree <- function(distanceMatrix) {
 #' @param d_rate death rates for types (vector)
 #' @param mu driver mutation rates for types (vector)
 #' @param T_vector time discretization (vector)
-#' @param non_negativity_cutoff 
+#' @param non_negativity_cutoff
+#' @param n_threads number of threads for parallel computing (int, default 1)
 #' @return the mean fitness vector
 #' @export
-ith.Fitness <- function(phy, outFile, rho, d_t, time_scale, b_rate, d_rate, mu, T_vector, non_negativity_cutoff){
+ith.Fitness <- function(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, mu, T_vector, non_negativity_cutoff, n_threads=1){
 
-    argument = list(b_rate, d_rate, mu)
+    argument = list(b_rates, d_rates, mu)
 
     #start calculation
     message("start: E_list")
@@ -95,11 +97,11 @@ ith.Fitness <- function(phy, outFile, rho, d_t, time_scale, b_rate, d_rate, mu, 
 
     # up messages
     message("calculating up messages")
-    up_messages=calc_up_messages(phy, time_scale, argument, E_list, T_vector, non_negativity_cutoff)
+    up_messages=calc_up_messages(phy, time_scale, argument, rho, d_t, E_list, T_vector, non_negativity_cutoff, n_threads)
 
     # down messages
     message("calculating down messages")
-    down_messages=calc_down_messages(phy, time_scale, argument, E_list, up_messages, T_vector, non_negativity_cutoff)
+    down_messages=calc_down_messages(phy, time_scale, argument, rho, d_t, E_list, up_messages, T_vector, non_negativity_cutoff, n_threads)
 
     # marginal probabilities
     message("calculating marginal probabilities")

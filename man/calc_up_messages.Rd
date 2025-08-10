@@ -9,9 +9,12 @@ calc_up_messages(
   phy,
   time_scale,
   argument,
+  rho,
+  d_t,
   E_list,
   T_vector,
-  non_negativity_cutoff
+  non_negativity_cutoff,
+  n_threads
 )
 }
 \arguments{
@@ -21,7 +24,13 @@ calc_up_messages(
 
 \item{argument}{a list of birth, death and mutation data}
 
+\item{rho}{sampling probability}
+
+\item{d_t}{step size for integration}
+
 \item{E_list}{pre-calculated E_list (see the next step)}
+
+\item{n_threads}{number of threads for parallele computing}
 }
 \value{
 matrix of "messages" sent to a node by its progeny lineages, rows: node; columns: fitness type

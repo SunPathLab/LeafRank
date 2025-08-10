@@ -8,10 +8,13 @@ calc_down_messages(
   phy,
   time_scale,
   argument,
+  rho,
+  d_t,
   E_list,
   up_messages,
   T_vector,
-  non_negativity_cutoff
+  non_negativity_cutoff,
+  n_threads
 )
 }
 \arguments{
@@ -21,9 +24,15 @@ calc_down_messages(
 
 \item{argument}{a list of birth, death and mutation data}
 
+\item{rho}{sampling probability}
+
+\item{d_t}{step size for integration}
+
 \item{E_list}{pre-calculated E_list (see the next step)}
 
 \item{up_messages}{pre-calculated up messages}
+
+\item{n_threads}{number of threads for parallel computing}
 }
 \value{
 matrix of "messages" sent to a node by its ancestral and sibling lineages, rows: node; columns: fitness type
