@@ -13,7 +13,7 @@
 #' @importFrom ape drop.tip
 #' @importFrom ape root
 #' @export
-mutationMatrix2Tree <- function(treeFile) {
+mutationMatrix2Tree <- function(treeFile, removeNormal=TRUE) {
     treeData = read.delim(treeFile, stringsAsFactors = FALSE)
     samples = colnames(treeData)[-1]
     samples = c("normal", samples)
@@ -30,7 +30,9 @@ mutationMatrix2Tree <- function(treeFile) {
     print(dim(M))
     phy <- ape::nj(M)
     phy.rooted <- ape::root(phy, outgroup = "normal", resolve.root = TRUE)
-    phy <- ape::drop.tip(phy.rooted, "normal", trim.internal = TRUE, subtree = FALSE)
+    if (removeNormal){
+      phy <- ape::drop.tip(phy.rooted, "normal", trim.internal = TRUE, subtree = FALSE)
+    }
     return(phy)
 }
 
