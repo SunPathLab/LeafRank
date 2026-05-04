@@ -226,6 +226,9 @@ get_D_list <- function(rho, T_vector, d_t, argument, E_list, t_1, non_negativity
     D_sol <- integrate_phi_D(rho, T_vector, argument, E_list, ini_rank, phi0, t_1, d_t, non_negativity_cutoff)
     temp_list <- list()
     for (j in 1:fitness_count) {                                    # for each fitness type (ANCESTRAL)
+      #if (sum(is.na(D_sol[,j]))>100){
+        #browser()
+      #}
       D_approx <- approxfun(T_vector, D_sol[,j], method="linear")   # approximate the functions of D_i(t) by interpolation
       temp_list[[j]] <- D_approx
     }

@@ -27,6 +27,7 @@ mutationMatrix2Tree <- function(treeFile) {
         M[sn1,sn2] = sum(treeData[,sn1] != treeData[,sn2])
         M[sn2,sn1] = sum(treeData[,sn2] != treeData[,sn1])
     }
+    print(dim(M))
     phy <- ape::nj(M)
     phy.rooted <- ape::root(phy, outgroup = "normal", resolve.root = TRUE)
     phy <- ape::drop.tip(phy.rooted, "normal", trim.internal = TRUE, subtree = FALSE)
@@ -78,9 +79,9 @@ distanceMatrix2Tree <- function(distanceMatrix) {
 #' @param non_negativity_cutoff 
 #' @return the mean fitness vector
 #' @export
-ith.Fitness <- function(phy, outFile, rho, d_t, time_scale, b_rate, d_rate, mu, T_vector, non_negativity_cutoff){
+ith.Fitness <- function(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, mu, T_vector, non_negativity_cutoff){
 
-    argument = list(b_rate, d_rate, mu)
+    argument = list(b_rates, d_rates, mu)
 
     #start calculation
     message("start: E_list")
@@ -92,14 +93,32 @@ ith.Fitness <- function(phy, outFile, rho, d_t, time_scale, b_rate, d_rate, mu, 
         E_approx <- approxfun(T_vector, E_sol[,i], method="linear")    # approximate the functions of E_i(t) by interpolation
         E_list[[i]] <- E_approx
     }
+    
+    ## Compute the population integration
+    edge_data <- phy$edge
+    length_data <- phy$edge.length
+    num_of_node <- node_num(phy)
+    num_of_branch <- dim(edge_data)[1]
+    
+    time_estimate <- node_time_to_present(phy, time_scale) ## Approximated time of each node, with time scaled
+    
+    int_list <- foreach (i =1:num_of_branch) %dopar% {
+      source('ith.Fitness/R/solve_density.R')
+      up_node <- edge_data[i,1]
+      down_node <- edge_data[i,2]
+      t_1 <- time_estimate[down_node]
+      t <- length_data[i]/time_scale
+      temp <- integrate_prop(rho, argument, t, t_1, E_list, T_vector, d_t, non_negativity_cutoff)
+      temp
+    }
 
     # up messages
     message("calculating up messages")
-    up_messages=calc_up_messages(phy, time_scale, argument, E_list, T_vector, non_negativity_cutoff)
+    up_messages=calc_up_messages(phy, time_scale, argument, rho, d_t, E_list, T_vector, non_negativity_cutoff, time_estimate, int_list)
 
     # down messages
     message("calculating down messages")
-    down_messages=calc_down_messages(phy, time_scale, argument, E_list, up_messages, T_vector, non_negativity_cutoff)
+    down_messages=calc_down_messages(phy, time_scale, argument, rho, d_t, E_list, up_messages, T_vector, non_negativity_cutoff, time_estimate, int_list)
 
     # marginal probabilities
     message("calculating marginal probabilities")
@@ -146,5 +165,30 @@ rank_diff <- function(result_1, result_2)
       } 
     }
   }
+  return (kendall_dis)
+}
+
+
+#' Suggest a potential time scale based on given set of parameters.
+#'
+#' @param b_rates 1 x V birth rates of each fitness phenotype
+#' @param d_rates 1 x V death rates of each fitness phenotype
+#' @param nu driver mutation rates
+#' @param rho sampling probability
+#' @param TS time scale
+#' @param tree phylogeny tree start from the most recent common ancestor (MRCA) of all sampled tips
+#' @param model model selection (aggressiveness of parameter selection or conservative?)
+#' @return a full list of parameters
+#' @export
+get_all_pars <- function(
+    b_rates = NULL,
+    d_rates = NULL,
+    nu = NULL,
+    rho = NULL,
+    TS = NULL,
+    tree,
+    model = "default"  
+  ){
+  num_cells <- length(tree$tip)
   return (kendall_dis)
 }

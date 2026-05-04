@@ -131,7 +131,6 @@ node_time_to_present <- function(phy, time_scale){
 }
 
 
-
 #' @param phy a phylo object (tree object returned by nj)
 #' @return vector of branch ids corresponding to the sibling branch (of ordered branch ids)
 #' @export
@@ -151,3 +150,175 @@ get_sibling <- function(phy){
   }
   return (sibling_data)  
 }
+
+
+#' @param tree a phylo object with feature node_wgd, indicating the WGD status of tip nodes.
+#' @return a phylo object with internal nodes and branches labeled accordingly for WGD status.
+#' @export
+label_internal_nodes <- function(tree) { 
+  num_branch <- length(tree$edge[,1])
+  tree$edge_wgd <- rep(-1, num_branch)
+  job_done <- 0
+  while (job_done < num_branch){
+    for (i in 1:num_branch){
+      if (tree$edge_wgd[i] != -1 ){
+        next
+      }
+      child <- tree$edge[i,2]
+      parent <- tree$edge[i,1]
+      if (tree$node_wgd[child] == -1){
+        next
+      }
+      if (tree$node_wgd[child] == 1){
+        tree$edge_wgd[i] = 1
+        job_done = job_done + 1
+      }else{
+        tree$edge_wgd[i] = 0
+        job_done = job_done + 1
+      }
+      if (tree$node_wgd[parent] == -1){
+        sib <- get_siblings(child,tree)
+        if (tree$node_wgd[sib] == -1){
+          next
+        }else if(tree$node_wgd[sib] == tree$node_wgd[child]){
+          tree$node_wgd[parent] = tree$node_wgd[child]
+        }else{
+          tree$node_wgd[parent] = 0
+        }
+      }
+      
+    }
+  }
+  tree
+}
+
+#' @param tree a phylo object with feature node_wgd, indicating the WGD status of tip nodes.
+#' @return a phylo object with internal nodes and branches labeled accordingly for WGD status based on the Des. assumption.
+#' @export
+label_internal_nodes_des <- function(tree) { 
+  num_branch <- length(tree$edge[,1])
+  tree$edge_wgd <- rep(-1, num_branch)
+  job_done <- 0
+  while (job_done < num_branch){
+    for (i in 1:num_branch){
+      if (tree$edge_wgd[i] != -1 ){
+        next
+      }
+      child <- tree$edge[i,2]
+      parent <- tree$edge[i,1]
+      if (tree$node_wgd[child] == -1){
+        next
+      }
+      if (tree$node_wgd[parent] == 1){
+        tree$edge_wgd[i] = 1
+        job_done = job_done + 1
+      }else{
+        tree$edge_wgd[i] = 0
+        job_done = job_done + 1
+      }
+      if (tree$node_wgd[parent] == -1){
+        sib <- get_siblings(child,tree)
+        if (tree$node_wgd[sib] == -1){
+          next
+        }else if(tree$node_wgd[sib] == tree$node_wgd[child]){
+          tree$node_wgd[parent] = tree$node_wgd[child]
+        }else{
+          tree$node_wgd[parent] = 0
+        }
+      }
+      
+    }
+  }
+  tree
+}
+
+#' Get a full set of LeafRank configuration. 
+#'
+#' @param phy a phylo object (tree object returned by nj)
+#' @return vector of branch ids corresponding to the sibling branch (of ordered branch ids)
+#' @export
+get_full_pars <- function(
+    b_rates = NULL,
+    d_rates = NULL,
+    nu      = NULL,
+    rho     = NULL,
+    tau     = NULL,
+    init    = NULL,
+    tree,
+    model   = 'default'
+  ){
+  cell_num <- length(tree$tip.label)
+  input <- list(b_rates, d_rates, nu, rho, tau)
+  input_A <- list(b_rates,d_rates)
+  if (all(sapply(input_A, is.null))){
+    num_pheno <- 16
+  }else if(is.null(input_A)){
+    idx <- which(!sapply(input_A,is.null))
+    num_pheno <- length(input_A[[idx]])
+  }else{
+    num_pheno <- length(b_rates)
+  }
+  p_init <- matrix(rep(0,num_pheno),nrow = 1)
+  p_init[1] <- 1
+  if (is.null(init)){
+    init <- p_init
+  }else if(length(init) < num_pheno){
+    init <- p_init
+  }
+  sum_vec <- matrix(rep(1,num_pheno),ncol = 1)
+  
+  b_coeff <- 4^(1/(num_pheno-1))
+  p_b_rates <- 1.1*b_coeff^(0:num_pheno-1)-1.1
+  p_d_rates <- replicate(num_pheno, 1)
+  p_nu      <- 0.0001
+  p_rho     <- 0.0005
+  
+  while (sum(sapply(input, is.null))> 1) {
+    idx <- which(sapply(input, is.null))
+    if (idx[1] == 1){
+      if (idx[2] >2){
+        b_rates <- d_rates + p_b_rates
+      }else{
+        b_rates <- 1.1 + p_b_rates
+      }
+    }else if(idx[1] == 2){
+      d_rates <- p_d_rates
+    }else if(idx[1] == 3){
+      nu <- p_nu
+    }else if(idx[1] == 4){
+      rho <- p_rho
+    }
+    input <- list(b_rates, d_rates, nu, rho, tau)
+  }
+  
+  idx <- which(sapply(input, is.null))
+  
+  if (idx == 5){
+    total_cell <- cell_num/rho
+    A <- diag(b_rates-d_rates) + cbind(matrix(0,ncol = 1,nrow = num_pheno),diag(nu,nrow = num_pheno, ncol = num_pheno-1))
+    f <- function(t){
+      as.numeric(init %*% expm::expm(A*t) %*% sum_vec)-total_cell
+    }
+    z_sign <- sign(f(0))
+    t <- 0
+    for (i in c(10,20,50,100,200,500)){
+      if (sign(f(i))!= z_sign){
+        res <- uniroot(f,interval  = c(0,i))
+        t <- res$root
+        break
+      }
+    }
+    if (t == 0){
+      stop("Expected time is out of default range: Need manurally extend the range")
+    }
+    tau <- 1/t
+  }else if (idx == 4){
+    A <- diag(b_rates-d_rates) + cbind(matrix(0,ncol = 1,nrow = num_pheno),diag(nu,nrow = num_pheno, ncol = num_pheno-1))
+    total_cell <- as.numeric(init %*% expm::expm(A*(1/tau)) %*% sum_vec)
+    rho <- cell_num/total_cell
+  }
+  
+  input <- list(b_rates, d_rates, nu, rho, tau)
+  return(input)
+}
+
