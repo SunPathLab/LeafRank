@@ -185,10 +185,10 @@ calc_down_messages <- function(phy, time_scale, argument, rho, d_t, E_list, up_m
           sibling_branch <- sibling_data[i]
           
           temp_x <- exp(Brobdingnag::as.brob(up_messages[sibling_branch,1]))*2*b[1]
-          temp_y <- exp(Brobdingnag::as.brob(up_messages[sibling_branch,2]))*mu[1]
+          temp_y <- exp(Brobdingnag::as.brob(up_messages[sibling_branch,2]))*nu[1]
           temp_2[1] <- temp_x + temp_y
           
-          temp_y <- exp(Brobdingnag::as.brob(up_messages[sibling_branch,1]))*mu[1]
+          temp_y <- exp(Brobdingnag::as.brob(up_messages[sibling_branch,1]))*nu[1]
           temp_2[2] <- temp_y
         }
 
@@ -227,7 +227,7 @@ calc_down_messages <- function(phy, time_scale, argument, rho, d_t, E_list, up_m
 #' @export
 up_m_des <- function(up_messages, down_node, phy, argument) {
   b <- argument[[1]]
-  mu <- argument[[3]]
+  nu <- argument[[3]]
   fitness_count <- length(b)
   
   edge_data <- phy$edge
@@ -250,8 +250,8 @@ up_m_des <- function(up_messages, down_node, phy, argument) {
   
   for (i in 1:fitness_count-1) {
     temp_1 <- up_messages[index_1,i]+up_messages[index_2,i]+log(2*b[i])
-    temp_2 <- up_messages[index_1,(i+1)]+up_messages[index_2,i]+log(mu[i])
-    temp_3 <- up_messages[index_1,i]+up_messages[index_2,(i+1)]+log(mu[i])
+    temp_2 <- up_messages[index_1,(i+1)]+up_messages[index_2,i]+log(nu[i])
+    temp_3 <- up_messages[index_1,i]+up_messages[index_2,(i+1)]+log(nu[i])
     temp_1 <- exp(Brobdingnag::as.brob(temp_1))
     temp_2 <- exp(Brobdingnag::as.brob(temp_2))
     temp_3 <- exp(Brobdingnag::as.brob(temp_3))
@@ -285,7 +285,7 @@ up_m_des <- function(up_messages, down_node, phy, argument) {
 #' @export
 up_m_sib <- function(up_messages, down_messages, up_node, phy, argument, i){
   b <- argument[[1]]
-  mu <- argument[[3]]
+  nu <- argument[[3]]
   fitness_count <- length(b)
   
   edge_data <- phy$edge
@@ -310,8 +310,8 @@ up_m_sib <- function(up_messages, down_messages, up_node, phy, argument, i){
   if (fitness_count>2){
     for (i in 2:(fitness_count-1)) {
       temp_1 <- up_messages[sibling_branch,i]+down_messages[parent_branch,i]+log(2*b[i])
-      temp_2 <- up_messages[sibling_branch,(i+1)]+down_messages[parent_branch,i]+log(mu[i])
-      temp_3 <- up_messages[sibling_branch,(i-1)]+down_messages[parent_branch,(i-1)]+log(mu[i])
+      temp_2 <- up_messages[sibling_branch,(i+1)]+down_messages[parent_branch,i]+log(nu[i])
+      temp_3 <- up_messages[sibling_branch,(i-1)]+down_messages[parent_branch,(i-1)]+log(nu[i])
       temp_1 <- exp(Brobdingnag::as.brob(temp_1))
       temp_2 <- exp(Brobdingnag::as.brob(temp_2))
       temp_3 <- exp(Brobdingnag::as.brob(temp_3))
@@ -324,7 +324,7 @@ up_m_sib <- function(up_messages, down_messages, up_node, phy, argument, i){
   i <- 1
   temp_1 <- up_messages[sibling_branch,i]+down_messages[parent_branch,i]+log(2*b[i])
   temp_1 <- exp(Brobdingnag::as.brob(temp_1))
-  temp_2 <- up_messages[sibling_branch,(i+1)]+down_messages[parent_branch,i]+log(mu[i])
+  temp_2 <- up_messages[sibling_branch,(i+1)]+down_messages[parent_branch,i]+log(nu[i])
   temp_2 <- exp(Brobdingnag::as.brob(temp_2))
   sol[i] <- temp_1 + temp_2
 
@@ -332,7 +332,7 @@ up_m_sib <- function(up_messages, down_messages, up_node, phy, argument, i){
   i <- fitness_count
   temp_1 <- up_messages[sibling_branch,i]+down_messages[parent_branch,i]+log(2*b[i])
   temp_1 <- exp(Brobdingnag::as.brob(temp_1))
-  temp_2 <- up_messages[sibling_branch,(i-1)]+down_messages[parent_branch,(i-1)]+log(mu[i])
+  temp_2 <- up_messages[sibling_branch,(i-1)]+down_messages[parent_branch,(i-1)]+log(nu[i])
   temp_2 <- exp(Brobdingnag::as.brob(temp_2))
   sol[i] <- temp_1 + temp_2
   
@@ -372,7 +372,7 @@ calc_marginal_probabilities <- function(phy, time_scale, up_messages, down_messa
   num_of_branch <- dim(edge_data)[1]
   b <- argument[[1]]
   fitness_count <- length(b)
-  mu <- argument[[3]]
+  nu <- argument[[3]]
   marginal_prob <-  replicate(fitness_count, numeric(num_of_node))
   
   root_id <- 0
@@ -411,8 +411,8 @@ calc_marginal_probabilities <- function(phy, time_scale, up_messages, down_messa
             temp_2[k] <- exp(Brobdingnag::as.brob(up_messages[branch_1, k])) * exp(Brobdingnag::as.brob(up_messages[branch_2, k])) * 2 * (b[k])
           } else {
             temp_2[k] <- exp(Brobdingnag::as.brob(up_messages[branch_1, k])) * exp(Brobdingnag::as.brob(up_messages[branch_2, k])) * 2 * b[k]
-            temp_2[k] <- temp_2[k] + exp(Brobdingnag::as.brob(up_messages[branch_1, (k+1)])) * exp(Brobdingnag::as.brob(up_messages[branch_2, k])) * mu[k]
-            temp_2[k] <- temp_2[k] + exp(Brobdingnag::as.brob(up_messages[branch_1, k])) * exp(Brobdingnag::as.brob(up_messages[branch_2, (k+1)])) * mu[k]
+            temp_2[k] <- temp_2[k] + exp(Brobdingnag::as.brob(up_messages[branch_1, (k+1)])) * exp(Brobdingnag::as.brob(up_messages[branch_2, k])) * nu[k]
+            temp_2[k] <- temp_2[k] + exp(Brobdingnag::as.brob(up_messages[branch_1, k])) * exp(Brobdingnag::as.brob(up_messages[branch_2, (k+1)])) * nu[k]
           }  ## get up messages to the target node
         }
         temp_2 <- log(temp_2)
@@ -442,8 +442,8 @@ calc_marginal_probabilities <- function(phy, time_scale, up_messages, down_messa
       j <- 1
 
       temp_2[j] <- exp(Brobdingnag::as.brob(up_messages[branch_1, j])) * exp(Brobdingnag::as.brob(up_messages[branch_2, j])) * 2*b[j]
-      temp_2[j] <- temp_2[j] + exp(Brobdingnag::as.brob(up_messages[branch_1, (j+1)])) * exp(Brobdingnag::as.brob(up_messages[branch_2, j])) * mu[j]
-      temp_2[j] <- temp_2[j] + exp(Brobdingnag::as.brob(up_messages[branch_1, j])) * exp(Brobdingnag::as.brob(up_messages[branch_2, (j+1)])) * mu[j]
+      temp_2[j] <- temp_2[j] + exp(Brobdingnag::as.brob(up_messages[branch_1, (j+1)])) * exp(Brobdingnag::as.brob(up_messages[branch_2, j])) * nu[j]
+      temp_2[j] <- temp_2[j] + exp(Brobdingnag::as.brob(up_messages[branch_1, j])) * exp(Brobdingnag::as.brob(up_messages[branch_2, (j+1)])) * nu[j]
  
       temp_2 <- log(temp_2)
       marginal_prob[i,] <- log_normalize(temp_1+temp_2)

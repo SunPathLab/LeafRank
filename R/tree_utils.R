@@ -130,7 +130,6 @@ node_time_to_present <- function(phy, time_scale){
   return (time_estimate)  
 }
 
-
 #' @param phy a phylo object (tree object returned by nj)
 #' @return vector of branch ids corresponding to the sibling branch (of ordered branch ids)
 #' @export
@@ -151,7 +150,9 @@ get_sibling <- function(phy){
   return (sibling_data)  
 }
 
-
+#' Label the WGD status for internal nodes and branches based on the tip annotations.
+#' This function is based on the `anc assumption', in which a branch is identified as WGD if its descendant node is WGD.
+#'
 #' @param tree a phylo object with feature node_wgd, indicating the WGD status of tip nodes.
 #' @return a phylo object with internal nodes and branches labeled accordingly for WGD status.
 #' @export
@@ -192,6 +193,9 @@ label_internal_nodes <- function(tree) {
   tree
 }
 
+#' Label the WGD status for internal nodes and branches based on the tip annotations.
+#' This function is based on the `des assumption', in which a branch is identified as WGD if its ancestor node is WGD.
+#' 
 #' @param tree a phylo object with feature node_wgd, indicating the WGD status of tip nodes.
 #' @return a phylo object with internal nodes and branches labeled accordingly for WGD status based on the Des. assumption.
 #' @export
@@ -234,8 +238,13 @@ label_internal_nodes_des <- function(tree) {
 
 #' Get a full set of LeafRank configuration. 
 #'
-#' @param phy a phylo object (tree object returned by nj)
-#' @return vector of branch ids corresponding to the sibling branch (of ordered branch ids)
+#' @param b_rates 1 x V vector for birth rates at each fitness phenotype
+#' @param d_rates 1 x V vector for death rates at each fitness phenotype
+#' @param nu coefficient for driver mutation rates
+#' @param rho sampling probability
+#' @param tau time scale
+#' @param init initial condition for original cell
+#' @return list of configuration parameters with 1. birth rates, 2. death rates, 3. nu, 4. rho, 5. Time scale
 #' @export
 get_full_pars <- function(
     b_rates = NULL,
@@ -311,7 +320,16 @@ get_full_pars <- function(
     if (t == 0){
       stop("Expected time is out of default range: Need manurally extend the range")
     }
-    tau <- 1/t
+    if (model == 'default'){
+      tau <- 1/t
+    }else if(model == 'aggressive 2'){
+      tau <- 2/t
+    }else if(model == 'aggressive 4'){
+      tau <- 4/t
+    }else if(model == 'aggressive 6'){
+      tau <- 6/t
+    }
+    
   }else if (idx == 4){
     A <- diag(b_rates-d_rates) + cbind(matrix(0,ncol = 1,nrow = num_pheno),diag(nu,nrow = num_pheno, ncol = num_pheno-1))
     total_cell <- as.numeric(init %*% expm::expm(A*(1/tau)) %*% sum_vec)
@@ -322,3 +340,57 @@ get_full_pars <- function(
   return(input)
 }
 
+
+#' Prepared for reconstructing ultrametric tree.
+#'
+#' @param phy a phylo object (tree object returned by nj or MEDICC2)
+#' @param tips_WGD a vector records the WGD status for all tips
+#' @param MAT_path matlab data saving path 
+#' @return .mat data storing necessary information about a distance-matrix based tree
+#' @export
+get_ultrametric_prepared <- function(phy, tips_WGD, MAT_path = NULL){
+  phy$node_wgd <- rep(-1,max(phy$edge[,1]))
+  if (length(tips_WGD)!=length(phy$tip.label)){
+    stop("tips_WGD has different size with number of tips")
+  }
+  phy$node_wgd[1:length(phy$tip.label)] <- tips_WGD
+  phy <- label_internal_nodes(phy)
+  el <- phy$edge.length
+  n  <- length(phy$tip.label)
+  m  <- phy$Nnode
+  if (is.null(MAT_path)){
+    MAT_path <- paste0("MATLAB/Tree", format(Sys.time(),"%Y%m%d_%H%M%S.mat"))
+  } else if(dir.exists(MAT_path)){
+    MAT_path <- paste0(MAT_path,"Tree", format(Sys.time(),"%Y%m%d_%H%M%S.mat"))
+  }
+  writeMat(MAT_path, edge_length = el, edge_wgd = phy$edge_wgd, edges = phy$edge, leaf_idx = 1:n, node_idx = 1:m+n, root = n+1)
+  return(paste0("Ultrametric tree Step 1 is successfully stored at <",MAT_path,">. Please use MATLAB script in directory MATLAB to proceed."))
+}
+
+
+#' Access matlab results and generate an ultrametric tree under the WGD assumption. 
+#'
+#' @param tree original distance-matrix based tree.
+#' @param MAT_path matlab data ('.csv' file) saving path 
+#' @param phy_path tree saving path
+#' @return WGD ultrametric tree
+#' @export
+get_ultrametric <- function(tree, MAT_path, phy_path = NULL){
+  WGD_file <- MAT_path
+  WGD_Results <- read.csv(WGD_file, header = FALSE)
+  WGD_Results <- WGD_Results[,1]
+  WGD_tree <- tree 
+  e1 <- WGD_tree$edge[,1]
+  e2 <- WGD_tree$edge[,2]
+  li <- length(WGD_Results)
+  
+  WGD_ages <- c(rep(0,li),1,WGD_Results[3:length(WGD_Results)])
+  WGD_tree$edge.length <- WGD_ages[e1] - WGD_ages[e2]
+  if (is.null(MAT_path)){
+    phy_path <- paste0("Tree", format(Sys.time(),"%Y%m%d_%H%M%S.rds"))
+  }
+  
+  saveRDS(WGD_tree, phy_path)
+  print(paste0("Ultrametric tree Step 2 is successfully stored at <",phy_path,">."))
+  return(WGD_tree)
+}

@@ -74,14 +74,14 @@ distanceMatrix2Tree <- function(distanceMatrix) {
 #' @param time_scale time normalization factor
 #' @param b_rate birth rates for types (vector)
 #' @param d_rate death rates for types (vector)
-#' @param mu driver mutation rates for types (vector)
+#' @param nu driver mutation rates for types (vector)
 #' @param T_vector time discretization (vector)
 #' @param non_negativity_cutoff 
 #' @return the mean fitness vector
 #' @export
-ith.Fitness <- function(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, mu, T_vector, non_negativity_cutoff){
+ith.Fitness <- function(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, nu, T_vector, non_negativity_cutoff){
 
-    argument = list(b_rates, d_rates, mu)
+    argument = list(b_rates, d_rates, nu)
 
     #start calculation
     message("start: E_list")

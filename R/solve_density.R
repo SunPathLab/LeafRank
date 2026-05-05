@@ -4,7 +4,7 @@
 #'
 #' @param f_initial vector of initial values (for each type of cells)
 #' @param T_vector time discretization
-#' @param argument a list of birth, death and mutation data (b <- argument[[1]]; d <- argument[[2]]; mu <- argument[[3]])
+#' @param argument a list of birth, death and mutation data (b <- argument[[1]]; d <- argument[[2]]; nu <- argument[[3]])
 #' @param d_t step size for integration
 #' @param non_negativity_cutoff
 #' @return numerically calculated E(t) over the time vector, a matrix with rows representing time and columns representing fitness types.
@@ -48,12 +48,12 @@ derivative_E <- function(phi, argument)
 {
   b <- argument[[1]]
   d <- argument[[2]]
-  mu <- argument[[3]]
+  nu <- argument[[3]]
   x_1 <- length(phi)
   dp <- numeric(x_1) # x_1 dimension vector of zeros
 
   #vectorized calculation for Ei (i: index of types) 
-  dp[1:(x_1-1)] <- -(b[1:(x_1-1)]+d[1:(x_1-1)]+mu[1:(x_1-1)])*phi[1:(x_1-1)] + d[1:(x_1-1)] + b[1:(x_1-1)]*phi[1:(x_1-1)]*phi[1:(x_1-1)] + mu[1:(x_1-1)]*phi[1:(x_1-1)]*phi[2:(x_1)]
+  dp[1:(x_1-1)] <- -(b[1:(x_1-1)]+d[1:(x_1-1)]+nu[1:(x_1-1)])*phi[1:(x_1-1)] + d[1:(x_1-1)] + b[1:(x_1-1)]*phi[1:(x_1-1)]*phi[1:(x_1-1)] + nu[1:(x_1-1)]*phi[1:(x_1-1)]*phi[2:(x_1)]
   dp[x_1] <- -(b[x_1]+d[x_1])*phi[x_1] + d[x_1] + (b[x_1])*phi[x_1]*phi[x_1]    # no mutation for the last state
   return (dp)
 }
@@ -155,10 +155,10 @@ derivative_D <- function(phi, eta, argument, ini_rank)
 {
   b <- argument[[1]]         # birth rates
   d <- argument[[2]]         # death rates
-  mu <- argument[[3]]        # mutation rates
+  nu <- argument[[3]]        # mutation rates
   x_1 <- length(phi)         # number of the types
   dp <- numeric(x_1)         # x_1 dimension vector of zeros (number of types)
-  dp[1:(x_1-1)] <- ini_rank[1:(x_1-1)]*(-((b[1:(x_1-1)]+d[1:(x_1-1)]+mu[1:(x_1-1)])*phi[1:(x_1-1)]) + 2*b[1:(x_1-1)]*phi[1:(x_1-1)]*eta[1:(x_1-1)] + mu[1:(x_1-1)]*eta[2:x_1]*phi[1:(x_1-1)] + mu[1:(x_1-1)]*eta[1:(x_1-1)]*phi[2:x_1])
+  dp[1:(x_1-1)] <- ini_rank[1:(x_1-1)]*(-((b[1:(x_1-1)]+d[1:(x_1-1)]+nu[1:(x_1-1)])*phi[1:(x_1-1)]) + 2*b[1:(x_1-1)]*phi[1:(x_1-1)]*eta[1:(x_1-1)] + nu[1:(x_1-1)]*eta[2:x_1]*phi[1:(x_1-1)] + nu[1:(x_1-1)]*eta[1:(x_1-1)]*phi[2:x_1])
   dp[x_1] <- ini_rank[x_1]*(-(b[x_1]+d[x_1])*phi[x_1] + 2*(b[x_1])*phi[x_1]*eta[x_1]) # no mutation for the last state
   return (dp)  
 }
