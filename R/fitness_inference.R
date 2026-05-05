@@ -79,8 +79,8 @@ distanceMatrix2Tree <- function(distanceMatrix) {
 #' @param non_negativity_cutoff 
 #' @return the mean fitness vector
 #' @export
-ith.Fitness <- function(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, nu, T_vector, non_negativity_cutoff){
-
+LeafRank <- function(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, nu, T_vector, non_negativity_cutoff, use_parallel = FALSE){
+  
     argument = list(b_rates, d_rates, nu)
 
     #start calculation
@@ -102,16 +102,26 @@ ith.Fitness <- function(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, nu
     
     time_estimate <- node_time_to_present(phy, time_scale) ## Approximated time of each node, with time scaled
     
-    int_list <- foreach (i =1:num_of_branch) %dopar% {
-      source('ith.Fitness/R/solve_density.R')
-      up_node <- edge_data[i,1]
-      down_node <- edge_data[i,2]
-      t_1 <- time_estimate[down_node]
-      t <- length_data[i]/time_scale
-      temp <- integrate_prop(rho, argument, t, t_1, E_list, T_vector, d_t, non_negativity_cutoff)
-      temp
+    if (use_parallel){
+      int_list <- foreach::foreach (i =1:num_of_branch, .packages = "LeafRank") %dopar% {
+        up_node <- edge_data[i,1]
+        down_node <- edge_data[i,2]
+        t_1 <- time_estimate[down_node]
+        t <- length_data[i]/time_scale
+        temp <- integrate_prop(rho, argument, t, t_1, E_list, T_vector, d_t, non_negativity_cutoff)
+        temp
+      }
+    }else{
+      message("Parallel packages not available, running sequentially.")
+      int_list <- vector("list", num_of_branch)
+      for (i in seq_len(num_of_branch)) {
+        up_node <- edge_data[i,1]
+        down_node <- edge_data[i,2]
+        t_1 <- time_estimate[down_node]
+        t <- length_data[i]/time_scale
+        int_list[[i]] <- integrate_prop(rho, argument, t, t_1, E_list, T_vector, d_t, non_negativity_cutoff)
+      }
     }
-
     # up messages
     message("calculating up messages")
     up_messages=calc_up_messages(phy, time_scale, argument, rho, d_t, E_list, T_vector, non_negativity_cutoff, time_estimate, int_list)
@@ -169,26 +179,4 @@ rank_diff <- function(result_1, result_2)
 }
 
 
-#' Suggest a potential time scale based on given set of parameters.
-#'
-#' @param b_rates 1 x V birth rates of each fitness phenotype
-#' @param d_rates 1 x V death rates of each fitness phenotype
-#' @param nu driver mutation rates
-#' @param rho sampling probability
-#' @param TS time scale
-#' @param tree phylogeny tree start from the most recent common ancestor (MRCA) of all sampled tips
-#' @param model model selection (aggressiveness of parameter selection or conservative?)
-#' @return a full list of parameters
-#' @export
-get_all_pars <- function(
-    b_rates = NULL,
-    d_rates = NULL,
-    nu = NULL,
-    rho = NULL,
-    TS = NULL,
-    tree,
-    model = "default"  
-  ){
-  num_cells <- length(tree$tip)
-  return (kendall_dis)
-}
+

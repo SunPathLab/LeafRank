@@ -18,6 +18,8 @@ get_D_list(rho, T_vector, d_t, argument, E_list, t_1, non_negativity_cutoff)
 \item{E_list}{precalculated E_list}
 
 \item{t_1}{time of the down node (starting node)}
+
+\item{non_negativity_cutoff}{Cut off threshold}
 }
 \value{
 Interpolated functions of D(t) encapsulated in a two dimensional list. the first dimension being the down node (child node) and the second being the upper node (ancestral node).

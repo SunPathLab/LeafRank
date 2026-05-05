@@ -8,10 +8,14 @@ calc_down_messages(
   phy,
   time_scale,
   argument,
+  rho,
+  d_t,
   E_list,
   up_messages,
   T_vector,
-  non_negativity_cutoff
+  non_negativity_cutoff,
+  time_estimate,
+  int_list
 )
 }
 \arguments{
@@ -24,6 +28,8 @@ calc_down_messages(
 \item{E_list}{pre-calculated E_list (see the next step)}
 
 \item{up_messages}{pre-calculated up messages}
+
+\item{non_negativity_cutoff}{Cut off threshold}
 }
 \value{
 matrix of "messages" sent to a node by its ancestral and sibling lineages, rows: node; columns: fitness type

@@ -130,6 +130,8 @@ node_time_to_present <- function(phy, time_scale){
   return (time_estimate)  
 }
 
+#' Helper function to get sibling branch
+#'
 #' @param phy a phylo object (tree object returned by nj)
 #' @return vector of branch ids corresponding to the sibling branch (of ordered branch ids)
 #' @export

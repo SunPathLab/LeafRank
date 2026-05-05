@@ -7,7 +7,7 @@
 #' @param rho probability of sampled the leaf
 
 #' @param E_list pre-calculated E_list (see the next step)
-#' @param non_negativity_cutoff
+#' @param non_negativity_cutoff  Cut off threshold
 #' @return matrix of "messages" sent to a node by its progeny lineages, rows: node; columns: fitness type
 #' @importFrom Brobdingnag as.brobmat
 #' @export
@@ -117,7 +117,7 @@ calc_up_messages <- function(phy, time_scale, argument, rho, d_t, E_list, T_vect
 #' @param argument a list of birth, death and mutation data
 #' @param E_list pre-calculated E_list (see the next step)
 #' @param up_messages pre-calculated up messages
-#' @param non_negativity_cutoff
+#' @param non_negativity_cutoff Cut off threshold
 #' @return matrix of "messages" sent to a node by its ancestral and sibling lineages, rows: node; columns: fitness type
 #' @importFrom Brobdingnag as.brob
 #' @export

@@ -1,3 +1,10 @@
+---
+title: "README"
+output: README
+---
+
+
+
 # Intro
 
 LeafRank is a computational framework to infer the fitness ranking of a single-cell phylogenetic tree.
@@ -8,14 +15,14 @@ LeafRank is a computational framework to infer the fitness ranking of a single-c
 We provide two ways of installation.
 
 ## Using devtools to install from github:
-```{r}
+```{r, eval=FALSE}
 library(devtools)
 install_github("SunPathLab/LeafRank")
 ```
 
 ## Install necessary environmental packages:
 
-```{r}
+```{r, eval=FALSE}
 renv::restore(lockfile = 'LeafRank.lock')
 ```
 
@@ -33,10 +40,16 @@ Specifically, the pipeline includes:
 
 ## Initialization
 
-```{r}
+```{r, eval=FALSE}
 ####### Loading necessary script ###################
 library(LeafRank)
 library(ape)
+####### Register the parallel cluster #################
+library(doParallel)
+library(foreach)
+cn <- parallel::detectCores()  
+cl <- makeCluster(2)        
+registerDoParallel(cl)
 ```
 
 ## 1. Initialize the tree
@@ -57,14 +70,14 @@ phy <- keep.tip(phy,idx)
 rho        <- subsample_size/1000000   # sampling probability  
 b_rates    <- 0.2*1.2^(0:7)            # birth rates  
 d_rates    <- replicate(8, 0.18)       # death rates
-nu         <- replicate(8, 0.0001)     # driver mutation rates
+nu         <- 0.0001                   # driver mutation rates
 time_scale <- 1                        # time scale
 # Practical configuration
 #rho        <- 0.0005       #0.0005 # sampling probability
 #b_rates    <- 1.1*1.1^(0:15)   #comma seperated   16 types (1.1*1.1^0:15) 
 #d_rates <- replicate(16, 1)    #comma seperated
-#nu <- replicate(16, 0.0001)
-#param <- get_full_pars(b_rates = b_rates, d_rates = d_rates, nu = mu, rho = rho, tree = phy, model = 'default') # model in {'default', 'agressive2', 'agressive4', 'agressive6'}
+#nu <- 0.0001
+#param <- get_full_pars(b_rates = b_rates, d_rates = d_rates, nu = nu[1], rho = rho, tree = phy, model = 'default') # model in {'default', 'agressive2', 'agressive4', 'agressive6'}
 ################  ODE integration setting  ######################
 d_t        <- 0.01                     # delta t
 timeFrom   <- 0
@@ -73,6 +86,7 @@ timeBy     <- timeTo/200
 ################  Prepare inputs and outputs ####################
 non_negativity_cutoff <- 0
 outFile <- "Exemplary Trees/pFitness.out.rds"
+acc_parallel <- TRUE  # configuration whether accelerating using parallel computing.
 rho = as.numeric(rho)
 d_t = as.numeric(d_t)
 time_scale = as.numeric(time_scale)
@@ -83,8 +97,10 @@ non_negativity_cutoff = as.numeric(non_negativity_cutoff)
 
 ## 3. Call LeafRank
 
-```{r}
-outcome = LeafRank(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, nu, T_vector, non_negativity_cutoff)
+```{r, eval=FALSE}
+outcome = LeafRank(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, nu, T_vector, non_negativity_cutoff,acc_parallel)
+
+stopCluster(cl)
 ```
 
 ## 4. Plot and analyze prediction
