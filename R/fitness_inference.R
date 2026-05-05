@@ -76,7 +76,8 @@ distanceMatrix2Tree <- function(distanceMatrix) {
 #' @param d_rate death rates for types (vector)
 #' @param nu driver mutation rates for types (vector)
 #' @param T_vector time discretization (vector)
-#' @param non_negativity_cutoff 
+#' @param non_negativity_cutoff Set threshold
+#' @param use_parallel Indicator for parallel computing
 #' @return the mean fitness vector
 #' @export
 LeafRank <- function(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, nu, T_vector, non_negativity_cutoff, use_parallel = FALSE){

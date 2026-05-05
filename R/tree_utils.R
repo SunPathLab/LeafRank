@@ -152,6 +152,21 @@ get_sibling <- function(phy){
   return (sibling_data)  
 }
 
+#' Helper function to get sibling node
+#'
+#' @param node current node
+#' @param phy a phylo object
+#' @return node attached to the sibling branch
+#' @export
+get_siblings <- function(node, tree) {
+  # find parent of the node
+  parent <- tree$edge[tree$edge[,2] == node, 1]
+  # find all children of that parent
+  children <- tree$edge[tree$edge[,1] == parent, 2]
+  # exclude the node itself
+  setdiff(children, node)
+}
+
 #' Label the WGD status for internal nodes and branches based on the tip annotations.
 #' This function is based on the `anc assumption', in which a branch is identified as WGD if its descendant node is WGD.
 #'

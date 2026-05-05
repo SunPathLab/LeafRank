@@ -41,14 +41,19 @@ Specifically, the pipeline includes:
 ## Initialization
 
 ```{r, eval=FALSE}
-####### Loading necessary script ###################
+####### Loading necessary packages ###################
 library(LeafRank)
 library(ape)
+library(tibble)
+library(ggtree)
+library(ggplot2)
+library(ggtreeExtra)
+library(R.matlab)
 ####### Register the parallel cluster #################
 library(doParallel)
 library(foreach)
 cn <- parallel::detectCores()  
-cl <- makeCluster(2)        
+cl <- parallel::makeCluster(3)        
 registerDoParallel(cl)
 ```
 
@@ -86,7 +91,7 @@ timeBy     <- timeTo/200
 ################  Prepare inputs and outputs ####################
 non_negativity_cutoff <- 0
 outFile <- "Exemplary Trees/pFitness.out.rds"
-acc_parallel <- TRUE  # configuration whether accelerating using parallel computing.
+acc_parallel <- FALSE  # configuration whether accelerating using parallel computing.
 rho = as.numeric(rho)
 d_t = as.numeric(d_t)
 time_scale = as.numeric(time_scale)
@@ -108,21 +113,16 @@ stopCluster(cl)
 ```{r}
 Results       <- readRDS("Exemplary Trees/pFitness.out.rds")
 phy           <- Results$phylo
-TrueFitness   <- b_rates[as.numeric(phy$fitness$V1)]
 PredFitness   <- Results$meanFitness[1:length(phy$tip.label)]
-True_Pred_cor <- cor(TrueFitness, PredFitness, method = "spearman")
 
-True_ring <- tibble(
-  label = phy$tip.label,
-  fitness = TrueFitness
-)
+
 Pred_ring <- tibble(
   label = phy$tip.label,
   fitness = PredFitness
 )
   
 plot_Pred <- ggtree(phy, layout = 'circular', size = 0.3) + 
-             labs(title = paste0("TT ranking (rho: ",format(True_Pred_cor, nsmall = 4),")")) +
+             labs(title = paste0("TT ranking ")) +
              theme(
                legend.position = "right",
                plot.title = element_text(hjust = 0.5),
@@ -147,35 +147,6 @@ plot_Pred <- ggtree(phy, layout = 'circular', size = 0.3) +
                )
   
   
-
-  
-  
-plot_True <- ggtree(phy, layout = 'circular', size = 0.3) + 
-             labs(title = "True ranking") +
-             theme(
-               legend.position = "right",
-               plot.title = element_text(hjust = 0.5),
-               legend.key.size = unit(0.2, "cm"),
-               plot.margin = unit(c(0,0,0,0), "cm")
-               ) + 
-             geom_fruit(
-               data = True_ring,
-               geom = geom_bar,
-               mapping = aes(y = label, x = fitness, fill = fitness),
-               orientation = "y",
-               stat = "identity",
-               width = 0.3
-               ) +
-             scale_fill_gradient(
-               low = "#93C477", 
-               high = "#1F78B4"
-               ) +
-             guides(
-               fill = guide_colorbar(order = 1), 
-               color = guide_legend(order = 2)
-               )
-
-plots <- (plot_True|plot_Pred)
 
 ```
 
