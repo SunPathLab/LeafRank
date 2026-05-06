@@ -1,6 +1,5 @@
 ---
-title: "README"
-output: README
+output: github_document
 ---
 
 
@@ -12,49 +11,51 @@ LeafRank is a computational framework to infer the fitness ranking of a single-c
 
 
 # Installation
-We provide two ways of installation.
 
-## Using devtools to install from github:
-```{r, eval=FALSE}
-library(devtools)
-install_github("SunPathLab/LeafRank")
-```
+In R environment, make sure the following dependencies are installed:
 
-## Install necessary environmental packages:
-
-```{r, eval=FALSE}
-renv::restore(lockfile = 'LeafRank.lock')
-```
-
-
-
-# Getting Started
-
-We provide an example pipeline of function LeafRank:
-
-Specifically, the pipeline includes:
-  1. Initialize with an ultrametric phylogenetic tree, where branch lengths represent the elapsed time between nodes. For distance-matrix–based trees, in which branch lengths reflect mutational distances, we provide an optional step (`get_ultrametric_prepared`, `get_ultrametric`) to transform them into an ultrametric tree.
-  2. Initialize the parameters. We provide both preset parameters for example tree and function `get_full_pars` to generate full parameter sets.
-  3. Call `LearRank`.
-  4. Visualization
-
-## Initialization
-
-```{r, eval=FALSE}
-####### Loading necessary packages ###################
-library(LeafRank)
+```{r, message=FALSE}
 library(ape)
 library(tibble)
 library(ggtree)
 library(ggplot2)
 library(ggtreeExtra)
 library(R.matlab)
+```
+
+then
+
+```{r, eval = FALSE}
+library(devtools)
+install_github("SunPathLab/LeafRank")
+```
+
+
+
+
+# Getting Started
+
+We provide an illustaration pipeline of LeafRank:
+
+Specifically, the pipeline includes:
+  1. Initialize with an **ultrametric phylogenetic tree**, where branch lengths represent the elapsed time between nodes. For distance-matrix–based trees, in which branch lengths reflect mutational distances, we provide an optional step (`get_ultrametric_prepared`, `get_ultrametric`) to transform them into an ultrametric tree.
+  2. Initialize the parameters. We provide both preset parameters for example tree and function `get_full_pars` to generate full parameter sets.
+  3. Call `LearRank`.
+  4. Visualization
+
+## Initialization
+
+```{r, message=FALSE}
+####### Loading LeafRank ###################
+library(LeafRank)
+
 ####### Register the parallel cluster #################
 library(doParallel)
 library(foreach)
 cn <- parallel::detectCores()  
-cl <- parallel::makeCluster(2)        
+cl <- parallel::makeCluster(10)        
 registerDoParallel(cl)
+acc_parallel <- TRUE  # configuration whether accelerating using parallel computing.
 ```
 
 ## 1. Initialize the tree
@@ -62,7 +63,7 @@ registerDoParallel(cl)
 ```{r}
 tree_file <- "Exemplary Trees/Exemplary_Tree_SIM.rds"
 phy <- readRDS(tree_file)
-subsample_size <- 5
+subsample_size <- 50
 idx <- sample(phy$tip.label, subsample_size)
 phy <- keep.tip(phy,idx)
 ```
@@ -91,7 +92,6 @@ timeBy     <- timeTo/200
 ################  Prepare inputs and outputs ####################
 non_negativity_cutoff <- 0
 outFile <- "Exemplary Trees/pFitness.out.rds"
-acc_parallel <- FALSE  # configuration whether accelerating using parallel computing.
 rho = as.numeric(rho)
 d_t = as.numeric(d_t)
 time_scale = as.numeric(time_scale)
@@ -102,15 +102,17 @@ non_negativity_cutoff = as.numeric(non_negativity_cutoff)
 
 ## 3. Call LeafRank
 
-```{r, eval=FALSE}
-outcome = LeafRank(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, nu, T_vector, non_negativity_cutoff,acc_parallel)
+Due to the computational intensity, parallel computing is recommended. This can be enabled by registering parallel workers and setting `acc_parallel=TRUE`. For a tree with 250 tips, the approximate runtime using 20 workers is about 30 minutes.
+
+```{r, eval = FALSE}
+outcome = LeafRank(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, nu, T_vector, non_negativity_cutoff, acc_parallel)
 
 stopCluster(cl)
 ```
 
 ## 4. Plot and analyze prediction
 
-```{r}
+```{r, warning=FALSE}
 Results       <- readRDS("Exemplary Trees/pFitness.out.rds")
 phy           <- Results$phylo
 PredFitness   <- Results$meanFitness[1:length(phy$tip.label)]
@@ -121,7 +123,7 @@ Pred_ring <- tibble(
   fitness = PredFitness
 )
   
-plot_Pred <- ggtree(phy, layout = 'circular', size = 0.3) + 
+plot_Pred <- ggtree(phy, layout = 'circular', linewidth = 0.3) + 
              labs(title = paste0("TT ranking ")) +
              theme(
                legend.position = "right",
@@ -146,7 +148,7 @@ plot_Pred <- ggtree(phy, layout = 'circular', size = 0.3) +
                color = guide_legend(order = 2)
                )
   
-  
+plot_Pred
 
 ```
 

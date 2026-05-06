@@ -18,5 +18,9 @@ Imports:
   expm
 Suggests:
   rmarkdown,
-  renv
+  tibble,
+  ggtree,
+  ggplot2,
+  ggtreeExtra,
+  R.matlab
 
