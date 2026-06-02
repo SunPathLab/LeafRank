@@ -112,7 +112,6 @@ using 20 workers is about 30 minutes.
 ``` r
 outcome = LeafRank(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, nu, T_vector, non_negativity_cutoff, num_threads)
 
-stopCluster(cl)
 ```
 
 ## 4. Plot and analyze prediction
