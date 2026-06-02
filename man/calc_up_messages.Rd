@@ -14,7 +14,8 @@ calc_up_messages(
   E_list,
   T_vector,
   non_negativity_cutoff,
-  n_threads
+  time_estimate,
+  int_list
 )
 }
 \arguments{
@@ -24,13 +25,13 @@ calc_up_messages(
 
 \item{argument}{a list of birth, death and mutation data}
 
-\item{rho}{sampling probability}
-
-\item{d_t}{step size for integration}
+\item{rho}{probability of sampled the leaf}
 
 \item{E_list}{pre-calculated E_list (see the next step)}
 
-\item{n_threads}{number of threads for parallele computing}
+\item{non_negativity_cutoff}{Cut off threshold}
+
+\item{int_list}{pre-computed population integration}
 }
 \value{
 matrix of "messages" sent to a node by its progeny lineages, rows: node; columns: fitness type

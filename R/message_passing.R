@@ -4,19 +4,16 @@
 #' @param phy a phylo object (tree object returned by nj)
 #' @param time_scale time normalization factor
 #' @param argument a list of birth, death and mutation data
-#' @param rho sampling probability
-#' @param d_t step size for integration
+#' @param rho probability of sampled the leaf
+
 #' @param E_list pre-calculated E_list (see the next step)
-#' @param non_negativity_cutoff
-#' @param n_threads number of threads for parallele computing
+#' @param int_list pre-computed population integration
+#' @param non_negativity_cutoff  Cut off threshold
 #' @return matrix of "messages" sent to a node by its progeny lineages, rows: node; columns: fitness type
 #' @importFrom Brobdingnag as.brobmat
-#' @importFrom foreach %dopar%
-#' @importFrom foreach foreach
-#' @importFrom doParallel registerDoParallel
 #' @export
-calc_up_messages <- function(phy, time_scale, argument, rho, d_t, E_list, T_vector, non_negativity_cutoff, n_threads){
-    
+calc_up_messages <- function(phy, time_scale, argument, rho, d_t, E_list, T_vector, non_negativity_cutoff, time_estimate, int_list){
+  
   edge_data <- phy$edge
   length_data <- phy$edge.length
   num_of_node <- node_num(phy)
@@ -30,25 +27,12 @@ calc_up_messages <- function(phy, time_scale, argument, rho, d_t, E_list, T_vect
   
   up_messages <-  replicate(fitness_count, numeric(num_of_branch))  ## num_of_branch-by-fitness_count matrix
   
-  time_estimate <- node_time_to_present(phy, time_scale) ## Approximated time of each node, with time scaled
   
   
   jobs_done <- 0
-  # Load needed packages for parallele computing
-  requireNamespace("foreach")
-  requireNamespace("doParallel")
-  # Setup threads
-  cl <- parallel::makeCluster(n_threads)
-  doParallel::registerDoParallel(cl)
-  int_list <- foreach::foreach (i =1:num_of_branch, .export = c("integrate_prop", "get_D_list","integrate_phi_D", "integrate_D","derivative_D")) %dopar% {
-    up_node <- edge_data[i,1]
-    down_node <- edge_data[i,2]
-    t_1 <- time_estimate[down_node]
-    t <- length_data[i]/time_scale
-    temp <- integrate_prop(rho, argument, t, t_1, E_list, T_vector, d_t, non_negativity_cutoff)
-    temp
-  }
-  parallel::stopCluster(cl)  
+  
+
+  
   
   while (jobs_done < num_of_branch) {
     #print(jobs_done)
@@ -132,19 +116,14 @@ calc_up_messages <- function(phy, time_scale, argument, rho, d_t, E_list, T_vect
 #' @param phy a phylo object (tree object returned by nj)
 #' @param time_scale time normalization factor
 #' @param argument a list of birth, death and mutation data
-#' @param rho sampling probability
-#' @param d_t step size for integration
 #' @param E_list pre-calculated E_list (see the next step)
+#' @param int_list pre-computed population integration
 #' @param up_messages pre-calculated up messages
-#' @param non_negativity_cutoff
-#' @param n_threads number of threads for parallel computing
+#' @param non_negativity_cutoff Cut off threshold
 #' @return matrix of "messages" sent to a node by its ancestral and sibling lineages, rows: node; columns: fitness type
 #' @importFrom Brobdingnag as.brob
-#' @importFrom foreach %dopar%
-#' @importFrom foreach foreach
-#' @importFrom doParallel registerDoParallel
 #' @export
-calc_down_messages <- function(phy, time_scale, argument, rho, d_t, E_list, up_messages, T_vector, non_negativity_cutoff, n_threads){
+calc_down_messages <- function(phy, time_scale, argument, rho, d_t, E_list, up_messages, T_vector, non_negativity_cutoff, time_estimate, int_list){
   
   edge_data <- phy$edge
   length_data <- phy$edge.length
@@ -155,13 +134,14 @@ calc_down_messages <- function(phy, time_scale, argument, rho, d_t, E_list, up_m
   cal_status <- numeric(num_of_node)
   
   b <- argument[[1]]
+  nu <- argument[[3]]
   fitness_count <- length(b)
   
   ## num_of_branch by fitness_count zero matrix
   down_messages <-  replicate(fitness_count, numeric(num_of_branch))
   
   ## time to present estimate of each node
-  time_estimate <- node_time_to_present(phy, time_scale)
+
   
   ## get the id number for the root
   root_id <- 0
@@ -172,22 +152,9 @@ calc_down_messages <- function(phy, time_scale, argument, rho, d_t, E_list, up_m
   }
   
   jobs_done <- 0
-  # Load needed packages for parallele computing
-  requireNamespace("foreach")
-  requireNamespace("doParallel")
-  # Setup threads
-  cl <- parallel::makeCluster(n_threads)
-  doParallel::registerDoParallel(cl)
-
-  int_list <- foreach (i =1:num_of_branch, .export = c("integrate_prop", "get_D_list","integrate_phi_D", "integrate_D","derivative_D")) %dopar% {
-    up_node <- edge_data[i,1]
-    down_node <- edge_data[i,2]
-    t_1 <- time_estimate[down_node]
-    t <- length_data[i]/time_scale
-    temp <- integrate_prop(rho, argument, t, t_1, E_list, T_vector, d_t, non_negativity_cutoff)
-    temp
-  }
-  parallel::stopCluster(cl)
+  
+  
+  
   
   while (jobs_done < num_of_branch){
     ## print(jobs_done)
@@ -221,10 +188,10 @@ calc_down_messages <- function(phy, time_scale, argument, rho, d_t, E_list, up_m
           sibling_branch <- sibling_data[i]
           
           temp_x <- exp(Brobdingnag::as.brob(up_messages[sibling_branch,1]))*2*b[1]
-          temp_y <- exp(Brobdingnag::as.brob(up_messages[sibling_branch,2]))*mu[1]
+          temp_y <- exp(Brobdingnag::as.brob(up_messages[sibling_branch,2]))*nu[1]
           temp_2[1] <- temp_x + temp_y
           
-          temp_y <- exp(Brobdingnag::as.brob(up_messages[sibling_branch,1]))*mu[1]
+          temp_y <- exp(Brobdingnag::as.brob(up_messages[sibling_branch,1]))*nu[1]
           temp_2[2] <- temp_y
         }
 
@@ -263,7 +230,7 @@ calc_down_messages <- function(phy, time_scale, argument, rho, d_t, E_list, up_m
 #' @export
 up_m_des <- function(up_messages, down_node, phy, argument) {
   b <- argument[[1]]
-  mu <- argument[[3]]
+  nu <- argument[[3]]
   fitness_count <- length(b)
   
   edge_data <- phy$edge
@@ -286,8 +253,8 @@ up_m_des <- function(up_messages, down_node, phy, argument) {
   
   for (i in 1:fitness_count-1) {
     temp_1 <- up_messages[index_1,i]+up_messages[index_2,i]+log(2*b[i])
-    temp_2 <- up_messages[index_1,(i+1)]+up_messages[index_2,i]+log(mu[i])
-    temp_3 <- up_messages[index_1,i]+up_messages[index_2,(i+1)]+log(mu[i])
+    temp_2 <- up_messages[index_1,(i+1)]+up_messages[index_2,i]+log(nu[i])
+    temp_3 <- up_messages[index_1,i]+up_messages[index_2,(i+1)]+log(nu[i])
     temp_1 <- exp(Brobdingnag::as.brob(temp_1))
     temp_2 <- exp(Brobdingnag::as.brob(temp_2))
     temp_3 <- exp(Brobdingnag::as.brob(temp_3))
@@ -314,14 +281,14 @@ up_m_des <- function(up_messages, down_node, phy, argument) {
 #' @param down_messages pre-calculated down messages
 #' @param up_node index of the up node
 #' @param phy a phylo object (tree object returned by nj)
-#' @param argument a list of birth, death and mutation data
+#' @param argument a list of birth, death and driver aberration data
 #' @param i branch index
 #' @return the message (across fitness states) coming from the up_node
 #' @importFrom Brobdingnag as.brob
 #' @export
 up_m_sib <- function(up_messages, down_messages, up_node, phy, argument, i){
   b <- argument[[1]]
-  mu <- argument[[3]]
+  nu <- argument[[3]]
   fitness_count <- length(b)
   
   edge_data <- phy$edge
@@ -346,8 +313,8 @@ up_m_sib <- function(up_messages, down_messages, up_node, phy, argument, i){
   if (fitness_count>2){
     for (i in 2:(fitness_count-1)) {
       temp_1 <- up_messages[sibling_branch,i]+down_messages[parent_branch,i]+log(2*b[i])
-      temp_2 <- up_messages[sibling_branch,(i+1)]+down_messages[parent_branch,i]+log(mu[i])
-      temp_3 <- up_messages[sibling_branch,(i-1)]+down_messages[parent_branch,(i-1)]+log(mu[i])
+      temp_2 <- up_messages[sibling_branch,(i+1)]+down_messages[parent_branch,i]+log(nu[i])
+      temp_3 <- up_messages[sibling_branch,(i-1)]+down_messages[parent_branch,(i-1)]+log(nu[i])
       temp_1 <- exp(Brobdingnag::as.brob(temp_1))
       temp_2 <- exp(Brobdingnag::as.brob(temp_2))
       temp_3 <- exp(Brobdingnag::as.brob(temp_3))
@@ -360,7 +327,7 @@ up_m_sib <- function(up_messages, down_messages, up_node, phy, argument, i){
   i <- 1
   temp_1 <- up_messages[sibling_branch,i]+down_messages[parent_branch,i]+log(2*b[i])
   temp_1 <- exp(Brobdingnag::as.brob(temp_1))
-  temp_2 <- up_messages[sibling_branch,(i+1)]+down_messages[parent_branch,i]+log(mu[i])
+  temp_2 <- up_messages[sibling_branch,(i+1)]+down_messages[parent_branch,i]+log(nu[i])
   temp_2 <- exp(Brobdingnag::as.brob(temp_2))
   sol[i] <- temp_1 + temp_2
 
@@ -368,7 +335,7 @@ up_m_sib <- function(up_messages, down_messages, up_node, phy, argument, i){
   i <- fitness_count
   temp_1 <- up_messages[sibling_branch,i]+down_messages[parent_branch,i]+log(2*b[i])
   temp_1 <- exp(Brobdingnag::as.brob(temp_1))
-  temp_2 <- up_messages[sibling_branch,(i-1)]+down_messages[parent_branch,(i-1)]+log(mu[i])
+  temp_2 <- up_messages[sibling_branch,(i-1)]+down_messages[parent_branch,(i-1)]+log(nu[i])
   temp_2 <- exp(Brobdingnag::as.brob(temp_2))
   sol[i] <- temp_1 + temp_2
   
@@ -408,7 +375,7 @@ calc_marginal_probabilities <- function(phy, time_scale, up_messages, down_messa
   num_of_branch <- dim(edge_data)[1]
   b <- argument[[1]]
   fitness_count <- length(b)
-  mu <- argument[[3]]
+  nu <- argument[[3]]
   marginal_prob <-  replicate(fitness_count, numeric(num_of_node))
   
   root_id <- 0
@@ -447,8 +414,8 @@ calc_marginal_probabilities <- function(phy, time_scale, up_messages, down_messa
             temp_2[k] <- exp(Brobdingnag::as.brob(up_messages[branch_1, k])) * exp(Brobdingnag::as.brob(up_messages[branch_2, k])) * 2 * (b[k])
           } else {
             temp_2[k] <- exp(Brobdingnag::as.brob(up_messages[branch_1, k])) * exp(Brobdingnag::as.brob(up_messages[branch_2, k])) * 2 * b[k]
-            temp_2[k] <- temp_2[k] + exp(Brobdingnag::as.brob(up_messages[branch_1, (k+1)])) * exp(Brobdingnag::as.brob(up_messages[branch_2, k])) * mu[k]
-            temp_2[k] <- temp_2[k] + exp(Brobdingnag::as.brob(up_messages[branch_1, k])) * exp(Brobdingnag::as.brob(up_messages[branch_2, (k+1)])) * mu[k]
+            temp_2[k] <- temp_2[k] + exp(Brobdingnag::as.brob(up_messages[branch_1, (k+1)])) * exp(Brobdingnag::as.brob(up_messages[branch_2, k])) * nu[k]
+            temp_2[k] <- temp_2[k] + exp(Brobdingnag::as.brob(up_messages[branch_1, k])) * exp(Brobdingnag::as.brob(up_messages[branch_2, (k+1)])) * nu[k]
           }  ## get up messages to the target node
         }
         temp_2 <- log(temp_2)
@@ -478,8 +445,8 @@ calc_marginal_probabilities <- function(phy, time_scale, up_messages, down_messa
       j <- 1
 
       temp_2[j] <- exp(Brobdingnag::as.brob(up_messages[branch_1, j])) * exp(Brobdingnag::as.brob(up_messages[branch_2, j])) * 2*b[j]
-      temp_2[j] <- temp_2[j] + exp(Brobdingnag::as.brob(up_messages[branch_1, (j+1)])) * exp(Brobdingnag::as.brob(up_messages[branch_2, j])) * mu[j]
-      temp_2[j] <- temp_2[j] + exp(Brobdingnag::as.brob(up_messages[branch_1, j])) * exp(Brobdingnag::as.brob(up_messages[branch_2, (j+1)])) * mu[j]
+      temp_2[j] <- temp_2[j] + exp(Brobdingnag::as.brob(up_messages[branch_1, (j+1)])) * exp(Brobdingnag::as.brob(up_messages[branch_2, j])) * nu[j]
+      temp_2[j] <- temp_2[j] + exp(Brobdingnag::as.brob(up_messages[branch_1, j])) * exp(Brobdingnag::as.brob(up_messages[branch_2, (j+1)])) * nu[j]
  
       temp_2 <- log(temp_2)
       marginal_prob[i,] <- log_normalize(temp_1+temp_2)

@@ -10,7 +10,7 @@ mutationID   cell1    cell2   cell3   cell4  cell5  ...
 67890          0        1       1       1      0    ...
 ...}
 \usage{
-mutationMatrix2Tree(treeFile)
+mutationMatrix2Tree(treeFile, removeNormal = TRUE)
 }
 \arguments{
 \item{treeFile}{the mutationMatrix file input (tab delimited)}

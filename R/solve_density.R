@@ -4,9 +4,9 @@
 #'
 #' @param f_initial vector of initial values (for each type of cells)
 #' @param T_vector time discretization
-#' @param argument a list of birth, death and mutation data (b <- argument[[1]]; d <- argument[[2]]; mu <- argument[[3]])
+#' @param argument a list of birth, death and mutation data ((b <- argument1; d <- argument2; mu <- argument3)
 #' @param d_t step size for integration
-#' @param non_negativity_cutoff
+#' @param non_negativity_cutoff Cut off threshold
 #' @return numerically calculated E(t) over the time vector, a matrix with rows representing time and columns representing fitness types.
 #' @export
 integrate_E <- function(f_initial, T_vector, argument, d_t, non_negativity_cutoff) 
@@ -48,12 +48,12 @@ derivative_E <- function(phi, argument)
 {
   b <- argument[[1]]
   d <- argument[[2]]
-  mu <- argument[[3]]
+  nu <- argument[[3]]
   x_1 <- length(phi)
   dp <- numeric(x_1) # x_1 dimension vector of zeros
 
   #vectorized calculation for Ei (i: index of types) 
-  dp[1:(x_1-1)] <- -(b[1:(x_1-1)]+d[1:(x_1-1)]+mu[1:(x_1-1)])*phi[1:(x_1-1)] + d[1:(x_1-1)] + b[1:(x_1-1)]*phi[1:(x_1-1)]*phi[1:(x_1-1)] + mu[1:(x_1-1)]*phi[1:(x_1-1)]*phi[2:(x_1)]
+  dp[1:(x_1-1)] <- -(b[1:(x_1-1)]+d[1:(x_1-1)]+nu[1:(x_1-1)])*phi[1:(x_1-1)] + d[1:(x_1-1)] + b[1:(x_1-1)]*phi[1:(x_1-1)]*phi[1:(x_1-1)] + nu[1:(x_1-1)]*phi[1:(x_1-1)]*phi[2:(x_1)]
   dp[x_1] <- -(b[x_1]+d[x_1])*phi[x_1] + d[x_1] + (b[x_1])*phi[x_1]*phi[x_1]    # no mutation for the last state
   return (dp)
 }
@@ -66,7 +66,7 @@ derivative_E <- function(phi, argument)
 #' @param T_vector time discretization
 #' @param argument a list of birth, death and mutation data
 #' @param d_t step size for integration
-#' @param non_negativity_cutoff
+#' @param non_negativity_cutoff Cut off threshold
 #' @return numerically calculated solution of E(t)
 #' @export
 integrate_phi_E <- function(rho, T_vector, argument, d_t, non_negativity_cutoff) {
@@ -95,7 +95,7 @@ integrate_phi_E <- function(rho, T_vector, argument, d_t, non_negativity_cutoff)
 #' @param ini_rank only keeps the possible transition between state
 #' @param t_1 time of the node closer to the leaves ("down node"), this is to offset E(t) which is dependent on time
 #' @param d_t step size for integration
-#' @param non_negativity_cutoff
+#' @param non_negativity_cutoff Cut off threshold
 #' @return numerically calculated D(t) over the time vector, a matrix with rows representing time and columns representing fitness types.
 #' @export
 integrate_D <- function(f_initial, T_vector, argument, E_list, ini_rank, t_1, d_t, non_negativity_cutoff) 
@@ -155,10 +155,10 @@ derivative_D <- function(phi, eta, argument, ini_rank)
 {
   b <- argument[[1]]         # birth rates
   d <- argument[[2]]         # death rates
-  mu <- argument[[3]]        # mutation rates
+  nu <- argument[[3]]        # mutation rates
   x_1 <- length(phi)         # number of the types
   dp <- numeric(x_1)         # x_1 dimension vector of zeros (number of types)
-  dp[1:(x_1-1)] <- ini_rank[1:(x_1-1)]*(-((b[1:(x_1-1)]+d[1:(x_1-1)]+mu[1:(x_1-1)])*phi[1:(x_1-1)]) + 2*b[1:(x_1-1)]*phi[1:(x_1-1)]*eta[1:(x_1-1)] + mu[1:(x_1-1)]*eta[2:x_1]*phi[1:(x_1-1)] + mu[1:(x_1-1)]*eta[1:(x_1-1)]*phi[2:x_1])
+  dp[1:(x_1-1)] <- ini_rank[1:(x_1-1)]*(-((b[1:(x_1-1)]+d[1:(x_1-1)]+nu[1:(x_1-1)])*phi[1:(x_1-1)]) + 2*b[1:(x_1-1)]*phi[1:(x_1-1)]*eta[1:(x_1-1)] + nu[1:(x_1-1)]*eta[2:x_1]*phi[1:(x_1-1)] + nu[1:(x_1-1)]*eta[1:(x_1-1)]*phi[2:x_1])
   dp[x_1] <- ini_rank[x_1]*(-(b[x_1]+d[x_1])*phi[x_1] + 2*(b[x_1])*phi[x_1]*eta[x_1]) # no mutation for the last state
   return (dp)  
 }
@@ -176,7 +176,7 @@ derivative_D <- function(phi, eta, argument, ini_rank)
 #' @param f_initial vector of initial values (for each type of cells)
 #' @param t_1 time of the down node (starting node)
 #' @param d_t step size for integration
-#' @param non_negativity_cutoff
+#' @param non_negativity_cutoff Cut off threshold
 #' @return numerically calculated solution of D(t)
 #' @export
 integrate_phi_D <- function(rho, T_vector, argument, E_list, ini_rank, f_initial, t_1, d_t, non_negativity_cutoff){
@@ -199,7 +199,7 @@ integrate_phi_D <- function(rho, T_vector, argument, E_list, ini_rank, f_initial
 #' @param argument a list of birth, death and mutation data
 #' @param E_list precalculated E_list
 #' @param t_1 time of the down node (starting node)
-#' @param non_negativity_cutoff
+#' @param non_negativity_cutoff Cut off threshold
 #' @return Interpolated functions of D(t) encapsulated in a two dimensional list. the first dimension being the down node (child node) and the second being the upper node (ancestral node).
 #' @export
 get_D_list <- function(rho, T_vector, d_t, argument, E_list, t_1, non_negativity_cutoff) {
@@ -246,7 +246,7 @@ get_D_list <- function(rho, T_vector, d_t, argument, E_list, t_1, non_negativity
 #' @param E_list pre-calculated E_list (see the next step)
 #' @param T_vector time discretization
 #' @param d_t step size for integration
-#' @param non_negativity_cutoff
+#' @param non_negativity_cutoff Cut off threshold
 #' @return a matrix of integrated D values of a branch (ancestral type to the child type)
 #' @export
 integrate_prop <- function(rho, argument, t, t_1, E_list, T_vector, d_t, non_negativity_cutoff){

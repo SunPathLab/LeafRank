@@ -14,6 +14,8 @@ integrate_phi_E(rho, T_vector, argument, d_t, non_negativity_cutoff)
 \item{argument}{a list of birth, death and mutation data}
 
 \item{d_t}{step size for integration}
+
+\item{non_negativity_cutoff}{Cut off threshold}
 }
 \value{
 numerically calculated solution of E(t)

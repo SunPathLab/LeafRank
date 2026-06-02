@@ -13,9 +13,11 @@ integrate_E(f_initial, T_vector, argument, d_t, non_negativity_cutoff)
 
 \item{T_vector}{time discretization}
 
-\item{argument}{a list of birth, death and mutation data (b <- argument[\link{1}]; d <- argument[\link{2}]; mu <- argument[\link{3}])}
+\item{argument}{a list of birth, death and mutation data ((b <- argument1; d <- argument2; mu <- argument3)}
 
 \item{d_t}{step size for integration}
+
+\item{non_negativity_cutoff}{Cut off threshold}
 }
 \value{
 numerically calculated E(t) over the time vector, a matrix with rows representing time and columns representing fitness types.

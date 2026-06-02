@@ -130,8 +130,8 @@ node_time_to_present <- function(phy, time_scale){
   return (time_estimate)  
 }
 
-
-
+#' Helper function to get sibling branch
+#'
 #' @param phy a phylo object (tree object returned by nj)
 #' @return vector of branch ids corresponding to the sibling branch (of ordered branch ids)
 #' @export
@@ -150,4 +150,264 @@ get_sibling <- function(phy){
     }
   }
   return (sibling_data)  
+}
+
+#' Helper function to get sibling node
+#'
+#' @param node current node
+#' @param phy a phylo object
+#' @return node attached to the sibling branch
+#' @export
+get_siblings <- function(node, tree) {
+  # find parent of the node
+  parent <- tree$edge[tree$edge[,2] == node, 1]
+  # find all children of that parent
+  children <- tree$edge[tree$edge[,1] == parent, 2]
+  # exclude the node itself
+  setdiff(children, node)
+}
+
+#' Label the WGD status for internal nodes and branches based on the tip annotations.
+#' This function is based on the `anc assumption', in which a branch is identified as WGD if its descendant node is WGD.
+#'
+#' @param tree a phylo object with feature node_wgd, indicating the WGD status of tip nodes.
+#' @return a phylo object with internal nodes and branches labeled accordingly for WGD status.
+#' @export
+label_internal_nodes <- function(tree) { 
+  num_branch <- length(tree$edge[,1])
+  tree$edge_wgd <- rep(-1, num_branch)
+  job_done <- 0
+  while (job_done < num_branch){
+    for (i in 1:num_branch){
+      if (tree$edge_wgd[i] != -1 ){
+        next
+      }
+      child <- tree$edge[i,2]
+      parent <- tree$edge[i,1]
+      if (tree$node_wgd[child] == -1){
+        next
+      }
+      if (tree$node_wgd[child] == 1){
+        tree$edge_wgd[i] = 1
+        job_done = job_done + 1
+      }else{
+        tree$edge_wgd[i] = 0
+        job_done = job_done + 1
+      }
+      if (tree$node_wgd[parent] == -1){
+        sib <- get_siblings(child,tree)
+        if (tree$node_wgd[sib] == -1){
+          next
+        }else if(tree$node_wgd[sib] == tree$node_wgd[child]){
+          tree$node_wgd[parent] = tree$node_wgd[child]
+        }else{
+          tree$node_wgd[parent] = 0
+        }
+      }
+      
+    }
+  }
+  tree
+}
+
+#' Label the WGD status for internal nodes and branches based on the tip annotations.
+#' This function is based on the `des assumption', in which a branch is identified as WGD if its ancestor node is WGD.
+#' 
+#' @param tree a phylo object with feature node_wgd, indicating the WGD status of tip nodes.
+#' @return a phylo object with internal nodes and branches labeled accordingly for WGD status based on the Des. assumption.
+#' @export
+label_internal_nodes_des <- function(tree) { 
+  num_branch <- length(tree$edge[,1])
+  tree$edge_wgd <- rep(-1, num_branch)
+  job_done <- 0
+  while (job_done < num_branch){
+    for (i in 1:num_branch){
+      if (tree$edge_wgd[i] != -1 ){
+        next
+      }
+      child <- tree$edge[i,2]
+      parent <- tree$edge[i,1]
+      if (tree$node_wgd[child] == -1){
+        next
+      }
+      if (tree$node_wgd[parent] == 1){
+        tree$edge_wgd[i] = 1
+        job_done = job_done + 1
+      }else{
+        tree$edge_wgd[i] = 0
+        job_done = job_done + 1
+      }
+      if (tree$node_wgd[parent] == -1){
+        sib <- get_siblings(child,tree)
+        if (tree$node_wgd[sib] == -1){
+          next
+        }else if(tree$node_wgd[sib] == tree$node_wgd[child]){
+          tree$node_wgd[parent] = tree$node_wgd[child]
+        }else{
+          tree$node_wgd[parent] = 0
+        }
+      }
+      
+    }
+  }
+  tree
+}
+
+#' Get a full set of LeafRank configuration. 
+#'
+#' @param b_rates 1 x V vector for birth rates at each fitness phenotype
+#' @param d_rates 1 x V vector for death rates at each fitness phenotype
+#' @param nu coefficient for driver mutation rates
+#' @param rho sampling probability
+#' @param tau time scale
+#' @param init initial condition for original cell
+#' @return list of configuration parameters with 1. birth rates, 2. death rates, 3. nu, 4. rho, 5. Time scale
+#' @export
+get_full_pars <- function(
+    b_rates = NULL,
+    d_rates = NULL,
+    nu      = NULL,
+    rho     = NULL,
+    tau     = NULL,
+    init    = NULL,
+    tree,
+    model   = 'default'
+  ){
+  cell_num <- length(tree$tip.label)
+  input <- list(b_rates, d_rates, nu, rho, tau)
+  input_A <- list(b_rates,d_rates)
+  if (all(sapply(input_A, is.null))){
+    num_pheno <- 16
+  }else if(is.null(input_A)){
+    idx <- which(!sapply(input_A,is.null))
+    num_pheno <- length(input_A[[idx]])
+  }else{
+    num_pheno <- length(b_rates)
+  }
+  p_init <- matrix(rep(0,num_pheno),nrow = 1)
+  p_init[1] <- 1
+  if (is.null(init)){
+    init <- p_init
+  }else if(length(init) < num_pheno){
+    init <- p_init
+  }
+  sum_vec <- matrix(rep(1,num_pheno),ncol = 1)
+  
+  b_coeff <- 4^(1/(num_pheno-1))
+  p_b_rates <- 1.1*b_coeff^(0:num_pheno-1)-1.1
+  p_d_rates <- replicate(num_pheno, 1)
+  p_nu      <- 0.0001
+  p_rho     <- 0.0005
+  
+  while (sum(sapply(input, is.null))> 1) {
+    idx <- which(sapply(input, is.null))
+    if (idx[1] == 1){
+      if (idx[2] >2){
+        b_rates <- d_rates + p_b_rates
+      }else{
+        b_rates <- 1.1 + p_b_rates
+      }
+    }else if(idx[1] == 2){
+      d_rates <- p_d_rates
+    }else if(idx[1] == 3){
+      nu <- p_nu
+    }else if(idx[1] == 4){
+      rho <- p_rho
+    }
+    input <- list(b_rates, d_rates, nu, rho, tau)
+  }
+  
+  idx <- which(sapply(input, is.null))
+  
+  if (idx == 5){
+    total_cell <- cell_num/rho
+    A <- diag(b_rates-d_rates) + cbind(matrix(0,ncol = 1,nrow = num_pheno),diag(nu,nrow = num_pheno, ncol = num_pheno-1))
+    f <- function(t){
+      as.numeric(init %*% expm::expm(A*t) %*% sum_vec)-total_cell
+    }
+    z_sign <- sign(f(0))
+    t <- 0
+    for (i in c(10,20,50,100,200,500)){
+      if (sign(f(i))!= z_sign){
+        res <- uniroot(f,interval  = c(0,i))
+        t <- res$root
+        break
+      }
+    }
+    if (t == 0){
+      stop("Expected time is out of default range: Need manurally extend the range")
+    }
+    if (model == 'default'){
+      tau <- 1/t
+    }else if(model == 'aggressive 2'){
+      tau <- 2/t
+    }else if(model == 'aggressive 4'){
+      tau <- 4/t
+    }else if(model == 'aggressive 6'){
+      tau <- 6/t
+    }
+    
+  }else if (idx == 4){
+    A <- diag(b_rates-d_rates) + cbind(matrix(0,ncol = 1,nrow = num_pheno),diag(nu,nrow = num_pheno, ncol = num_pheno-1))
+    total_cell <- as.numeric(init %*% expm::expm(A*(1/tau)) %*% sum_vec)
+    rho <- cell_num/total_cell
+  }
+  
+  input <- list(b_rates, d_rates, nu, rho, tau)
+  return(input)
+}
+
+
+#' Prepared for reconstructing ultrametric tree.
+#'
+#' @param phy a phylo object (tree object returned by nj or MEDICC2)
+#' @param tips_WGD a vector records the WGD status for all tips
+#' @param MAT_path matlab data saving path 
+#' @return .mat data storing necessary information about a distance-matrix based tree
+#' @export
+get_ultrametric_prepared <- function(phy, tips_WGD, MAT_path = NULL){
+  phy$node_wgd <- rep(-1,max(phy$edge[,1]))
+  if (length(tips_WGD)!=length(phy$tip.label)){
+    stop("tips_WGD has different size with number of tips")
+  }
+  phy$node_wgd[1:length(phy$tip.label)] <- tips_WGD
+  phy <- label_internal_nodes(phy)
+  el <- phy$edge.length
+  n  <- length(phy$tip.label)
+  m  <- phy$Nnode
+  if (is.null(MAT_path)){
+    MAT_path <- paste0("MATLAB/Tree", format(Sys.time(),"%Y%m%d_%H%M%S.mat"))
+  } else if(dir.exists(MAT_path)){
+    MAT_path <- paste0(MAT_path,"Tree", format(Sys.time(),"%Y%m%d_%H%M%S.mat"))
+  }
+  writeMat(MAT_path, edge_length = el, edge_wgd = phy$edge_wgd, edges = phy$edge, leaf_idx = 1:n, node_idx = 1:m+n, root = n+1)
+  return(paste0("Ultrametric tree Step 1 is successfully stored at <",MAT_path,">. Please use MATLAB script in directory MATLAB to proceed."))
+}
+
+
+#' Access matlab results and generate an ultrametric tree under the WGD assumption. 
+#'
+#' @param tree original distance-matrix based tree.
+#' @param MAT_path matlab data ('.csv' file) saving path 
+#' @param phy_path tree saving path
+#' @return WGD ultrametric tree
+#' @export
+get_ultrametric <- function(tree, MAT_path, phy_path = NULL){
+  WGD_file <- MAT_path
+  WGD_Results <- read.csv(WGD_file, header = FALSE)
+  WGD_Results <- WGD_Results[,1]
+  WGD_tree <- tree 
+  e1 <- WGD_tree$edge[,1]
+  e2 <- WGD_tree$edge[,2]
+  li <- length(WGD_Results)
+  
+  WGD_ages <- c(rep(0,li),1,WGD_Results[3:length(WGD_Results)])
+  WGD_tree$edge.length <- WGD_ages[e1] - WGD_ages[e2]
+  if (is.null(MAT_path)){
+    phy_path <- paste0("Tree", format(Sys.time(),"%Y%m%d_%H%M%S.rds"))
+  }
+  
+  saveRDS(WGD_tree, phy_path)
+  print(paste0("Ultrametric tree Step 2 is successfully stored at <",phy_path,">."))
+  return(WGD_tree)
 }

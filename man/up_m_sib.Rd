@@ -17,7 +17,7 @@ up_m_sib(up_messages, down_messages, up_node, phy, argument, i)
 
 \item{phy}{a phylo object (tree object returned by nj)}
 
-\item{argument}{a list of birth, death and mutation data}
+\item{argument}{a list of birth, death and driver aberration data}
 
 \item{i}{branch index}
 }

@@ -1,16 +1,29 @@
-Package: ith.Fitness
-Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.9000
-Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+Package: LeafRank
+Title: Inferring Relative Fitness from Single-Cell Phylogenies in Chromosomally Unstable Tumors
+Version: 0.1.0
+Authors@R: c(
+    person("Zicheng", "Wang", email = "wangzicheng@cuhk.edu.cn",
+           role = c("aut", "cre")),
+    person("Chenyu", "Wu", email = "wu000766@umn.edu",
+           role = "aut"),
+    person("Ruping", "Sun", email = "ruping@umn.edu",
+           role = "aut"))
+Description: LeafRank is a probabilistic framework for single cell phylogeny, inferring the relative fitness of sampled tumor cells. LeafRank takes as input a phylogenetic tree reconstructed from somatic aberrations, including SCNAs detected via single cell DNA-seq data, alongside parameter configurations defined by a multi-type branching process model. The framework  outputs the marginal probability of fitness types for leaf cells, conditioned on the observed tree topology and model configuration.
+License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
-Imports: 
-    ape,
-    Brobdingnag,
-    doParallel,
-    foreach
+RoxygenNote: 8.0.0
+Imports:
+  ape,
+  doParallel,
+  foreach,
+  parallel,
+  Brobdingnag,
+  expm
+Suggests:
+  rmarkdown,
+  tibble,
+  ggtree,
+  ggplot2,
+  ggtreeExtra,
+  R.matlab

@@ -76,15 +76,18 @@ distanceMatrix2Tree <- function(distanceMatrix) {
 #' @param time_scale time normalization factor
 #' @param b_rate birth rates for types (vector)
 #' @param d_rate death rates for types (vector)
-#' @param mu driver mutation rates for types (vector)
+#' @param nu driver mutation rates for types (vector)
 #' @param T_vector time discretization (vector)
-#' @param non_negativity_cutoff
-#' @param n_threads number of threads for parallel computing (int, default 1)
+#' @param non_negativity_cutoff Set threshold
+#' @param n_threads number of threads for parallele computing
 #' @return the mean fitness vector
+#' @importFrom foreach %dopar%
+#' @importFrom foreach foreach
+#' @importFrom doParallel registerDoParallel
 #' @export
-ith.Fitness <- function(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, mu, T_vector, non_negativity_cutoff, n_threads=1){
-
-    argument = list(b_rates, d_rates, mu)
+LeafRank <- function(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, nu, T_vector, non_negativity_cutoff, n_threads=1){
+  
+    argument = list(b_rates, d_rates, nu)
 
     #start calculation
     message("start: E_list")
@@ -97,13 +100,78 @@ ith.Fitness <- function(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, mu
         E_list[[i]] <- E_approx
     }
 
+    
+    # Move the approxfun generation INSIDE the loop
+    # to avoid external pointer serialization issues.
+    ## Compute the population integration
+    edge_data <- phy$edge
+    length_data <- phy$edge.length
+    num_of_node <- node_num(phy)
+    num_of_branch <- dim(edge_data)[1]
+
+    ## Approximated time of each node, with time scaled
+    time_estimate <- node_time_to_present(phy, time_scale) 
+
+    # Setup threads
+    cl <- parallel::makeCluster(n_threads)
+    # the cluster stops even if the code crashes mid-execution
+    on.exit(parallel::stopCluster(cl), add = TRUE) 
+    doParallel::registerDoParallel(cl) 
+
+    int_list <- foreach::foreach(
+      i = 1:num_of_branch, 
+      .packages = "LeafRank", #load package namespace
+      .export = c("integrate_prop", "get_D_list", "integrate_phi_D", "integrate_D", "derivative_D")
+    ) %dopar% {
+      
+      # Recreate E_list locally inside the worker thread to bypass serialization error
+      local_E_list <- list()
+      for (k in 1:dim(E_sol)[2]) {
+          local_E_list[[k]] <- approxfun(T_vector, E_sol[, k], method = "linear")
+      }
+      
+      up_node <- edge_data[i, 1]
+      down_node <- edge_data[i, 2]
+      t_1 <- time_estimate[down_node]
+      t <- length_data[i] / time_scale
+      
+      temp <- integrate_prop(rho, argument, t, t_1, local_E_list, T_vector, d_t, non_negativity_cutoff)
+      temp
+    }
+    
+    parallel::stopCluster(cl)
+    on.exit()
+
+    #Chenyu code start
+    #if (use_parallel){
+    #  int_list <- foreach::foreach (i =1:num_of_branch, .packages = "LeafRank") %dopar% {
+    #    up_node <- edge_data[i,1]
+    #    down_node <- edge_data[i,2]
+    #    t_1 <- time_estimate[down_node]
+    #    t <- length_data[i]/time_scale
+    #    temp <- integrate_prop(rho, argument, t, t_1, E_list, T_vector, d_t, non_negativity_cutoff)
+    #    temp
+    #  }
+    #}else{
+    #  message("Parallel packages not available, running sequentially.")
+    #  int_list <- vector("list", num_of_branch)
+    #  for (i in seq_len(num_of_branch)) {
+    #    up_node <- edge_data[i,1]
+    #    down_node <- edge_data[i,2]
+    #    t_1 <- time_estimate[down_node]
+    #    t <- length_data[i]/time_scale
+    #    int_list[[i]] <- integrate_prop(rho, argument, t, t_1, E_list, T_vector, d_t, non_negativity_cutoff)
+    #  }
+    #}
+    #Chenyu code end
+    
     # up messages
     message("calculating up messages")
-    up_messages=calc_up_messages(phy, time_scale, argument, rho, d_t, E_list, T_vector, non_negativity_cutoff, n_threads)
+    up_messages=calc_up_messages(phy, time_scale, argument, rho, d_t, E_list, T_vector, non_negativity_cutoff, time_estimate, int_list)
 
     # down messages
     message("calculating down messages")
-    down_messages=calc_down_messages(phy, time_scale, argument, rho, d_t, E_list, up_messages, T_vector, non_negativity_cutoff, n_threads)
+    down_messages=calc_down_messages(phy, time_scale, argument, rho, d_t, E_list, up_messages, T_vector, non_negativity_cutoff, time_estimate, int_list)
 
     # marginal probabilities
     message("calculating marginal probabilities")
@@ -152,3 +220,6 @@ rank_diff <- function(result_1, result_2)
   }
   return (kendall_dis)
 }
+
+
+

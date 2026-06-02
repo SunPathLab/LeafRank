@@ -32,6 +32,8 @@ integrate_phi_D(
 \item{t_1}{time of the down node (starting node)}
 
 \item{d_t}{step size for integration}
+
+\item{non_negativity_cutoff}{Cut off threshold}
 }
 \value{
 numerically calculated solution of D(t)

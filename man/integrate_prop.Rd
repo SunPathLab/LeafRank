@@ -29,6 +29,8 @@ integrate_prop(
 \item{T_vector}{time discretization}
 
 \item{d_t}{step size for integration}
+
+\item{non_negativity_cutoff}{Cut off threshold}
 }
 \value{
 a matrix of integrated D values of a branch (ancestral type to the child type)

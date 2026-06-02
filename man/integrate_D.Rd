@@ -32,6 +32,8 @@ integrate_D(
 \item{t_1}{time of the node closer to the leaves ("down node"), this is to offset E(t) which is dependent on time}
 
 \item{d_t}{step size for integration}
+
+\item{non_negativity_cutoff}{Cut off threshold}
 }
 \value{
 numerically calculated D(t) over the time vector, a matrix with rows representing time and columns representing fitness types.
