@@ -1,8 +1,13 @@
 
 # Intro
 
-LeafRank is a computational framework to infer the fitness ranking of a
-single-cell phylogenetic tree.
+LeafRank is a probabilistic framework for single cell phylogeny, inferring
+the relative fitness of sampled tumor cells. LeafRank takes as input a
+phylogenetic tree reconstructed from somatic aberrations, including SCNAs
+detected via scDNA-seq, alongside parameter configurations defined by a
+multi-type branching process model. The framework  outputs the marginal
+probability of fitness types for leaf cells, conditioned on the observed
+tree topology and model configuration.
 
 # Installation
 
@@ -43,6 +48,9 @@ generate full parameter sets. 3. Call `LearRank`. 4. Visualization
 ####### Loading LeafRank ###################
 library(LeafRank)
 
+num_threads = 8  #number of threads to run LeafRank, default 1
+```
+<!--
 ####### Register the parallel cluster #################
 library(doParallel)
 library(foreach)
@@ -50,7 +58,7 @@ cn <- parallel::detectCores()
 cl <- parallel::makeCluster(10)        
 registerDoParallel(cl)
 acc_parallel <- TRUE  # configuration whether accelerating using parallel computing.
-```
+-->
 
 ## 1. Initialize the tree
 
@@ -102,7 +110,7 @@ This can be enabled by registering parallel workers and setting
 using 20 workers is about 30 minutes.
 
 ``` r
-outcome = LeafRank(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, nu, T_vector, non_negativity_cutoff, acc_parallel)
+outcome = LeafRank(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, nu, T_vector, non_negativity_cutoff, num_threads)
 
 stopCluster(cl)
 ```
