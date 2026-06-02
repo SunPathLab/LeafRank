@@ -48,7 +48,7 @@ generate full parameter sets. 3. Call `LearRank`. 4. Visualization
 ####### Loading LeafRank ###################
 library(LeafRank)
 
-num_threads = 8  #number of threads to run LeafRank, default 1
+n_threads = 8  #number of threads to run LeafRank, default 1
 ```
 <!--
 ####### Register the parallel cluster #################
@@ -105,8 +105,9 @@ non_negativity_cutoff = as.numeric(non_negativity_cutoff)
 ## 3. Call LeafRank
 
 Due to the computational intensity, parallel computing is recommended.
-This can be enabled by registering parallel workers and setting
-`acc_parallel=TRUE`. For a tree with 250 tips, the approximate runtime
+This can be enabled by setting n_threads to a large number, subjet to the
+available computing resource of the running environment, eg
+`n_threads = 20`. For a tree with 250 cells, the approximate runtime
 using 20 workers is about 30 minutes.
 
 ``` r
