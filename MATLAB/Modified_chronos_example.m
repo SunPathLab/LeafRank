@@ -1,0 +1,17 @@
+    %% Initialization
+    %  Please specify the input/output path and custormize the modified
+    %  chronos options here
+
+    input_tree_path = "DM-tree.mat";          % input tree information
+    output_csv_path = "modified chronos results/ultra-tree.csv";       % output csv files
+    output_all_path = "modified chronos results/ultra-tree.mat";       % all matlab workspace
+    options.rate_bounds = [1e-6,1e5];         % bound for aberration rates
+    options.WGD_bounds  = [1.03,2.5];         % WGD multiplier on aberration rates
+    options.init_num = 50;                    % number of initial points for optimization
+    options.opt_algorithm = "interior-point"; % optimization algorithm option
+    options.opt_max_iter  = 1e4;              % maximum number of iteration in optimization
+    options.is_par  = false;                  % parallelization index
+
+    %% Call modified_chronos
+
+    modified_chronos(input_tree_path, output_csv_path, output_all_path, options);

@@ -1,0 +1,18 @@
+    %% Initialization
+    %  Please specify the simultaion output path and corresponding
+    %  parameters in options
+
+    output_dir = "MBP simulation results";                                                % output directory
+    
+    options.tree_sample_size = 10;                                                       % sampled tree size
+    options.passenger_rate   = 0.18;                                                      % passenger aberration rate
+    options.WGD_rate         = 0;                                                         % whole genome doubling rate
+    options.num_types        = 8;                                                         % number of potential fitness types
+    options.driver_rate      = 0.0001;                                                    % driver mutation rate
+    options.brith_rates      = [0.2000,0.2857,0.3714,0.4571,0.5429,0.6286,0.7143,0.8000]; % birth rates for different fitness types
+    options.death_rate       = 0.18;                                                      % death rate
+    options.total_cells      = 1000;                                                   % total simulated cells
+
+    %% Call modified_chronos
+
+    MBP_simulation(output_dir,options);
