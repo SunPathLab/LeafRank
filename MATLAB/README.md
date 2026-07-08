@@ -34,4 +34,4 @@ We provide two MATLAB script, `MBP_simulation_example.m` and `modified_chronos_e
     - is_par: Boolean indicator for parallelization. Parallelization is recommended due to the complexity of the optimization procedure. This requires the MATLAB `Parallel Computing Toolbox`.
 
 
-These modules works under MATLAB version 24.2.0.2712019 (R2024b) with addon toolboxes: `Optimization Toolbox` and `Parallel Computing Toolbox`
+These modules were developed and tested using MATLAB version 24.2.0.2712019 (R2024b) with the following add-on toolboxes: `Optimization Toolbox` and `Parallel Computing Toolbox`
