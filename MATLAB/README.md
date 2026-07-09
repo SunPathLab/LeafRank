@@ -2,15 +2,22 @@
 
 This directory contains two major MATLAB-based helper modules that support the analysis of LeafRank:
 1. Non-spatial simulation model `MBP_simulation`:
-    This directory contains all functions required to simulate the non-spartial synthesis tumors based on a multi-type branching process model. The simulation is performed stochastically using the Gillespie algorithm, which randomly generates the elapsed time between cellular events. These events are stored in a priority queue to preserve their chronological order. A detailed description of the modeled events can be found in the manuscript
+    This directory contains all functions required to simulate the non-spartial synthesis tumors based on a multi-type branching process model. The simulation is performed stochastically using the Gillespie algorithm, which randomly generates the elapsed time between cellular events. These events are stored in a priority queue to preserve their chronological order. A detailed description of the modeled events can be found in the manuscript. This module outputs the following files:
+    - `DM.txt`: Distance matrix of the sampled cells.
+    - `FT.txt`: Fitness types of the sampled cells.
+    - `EDGE.txt`: Edge relationships of the sampled cells in the true-time tree.
+    - `LEN.txt`: Elapse time between ancestor and descendant nodes for each edge in the true-time tree.
+    - `WGD.txt`: Whole-genome doubling status of the sampled cells.
+    - `data.mat`: Complete simulation data saved for troubleshooting purposes.
+    
 
 2. Modified chronos implementation `modified_chronos`:
     This directory contains all functions required to convert a distance-matrix based tree into an ultrametric tree under the state-dependent molecular clock model proposed in the manuscript. It requires inputs contains
-    - node_idx: index for internal nodes
-    - leaf_idx: index for leaf nodes
-    - edge_length: distance of each edge
-    - edge_wgd: indicator for edge WGD status
-    - edges: edges information presented by ancestor and descendent nodes index
+    - node_idx: index for internal nodes.
+    - leaf_idx: index for leaf nodes.
+    - edge_length: distance of each edge.
+    - edge_wgd: indicator for edge WGD status.
+    - edges: edges information presented by ancestor and descendent nodes index.
 
 
 We provide two MATLAB script, `MBP_simulation_example.m` and `modified_chronos_example.m`, to demonstrate the usage of these two modules. In each script, users can specify the following options and then run the entire script:
