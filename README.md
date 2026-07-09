@@ -1,7 +1,7 @@
-<table>
+<table border="0" cellspacing="0" cellpadding="0">
   <tr>
-    <td><img src="assets/leafrank_logo.svg" width="60" alt="LeafRank logo"></td>
-    <td><h1>LeafRank</h1></td>
+    <td><img src="assets/leafrank_logo.svg" width="100" alt="LeafRank logo"></td>
+    <td valign="middle"><h1 style="margin:0;">LeafRank</h1></td>
   </tr>
 </table>
 
