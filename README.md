@@ -1,5 +1,8 @@
+<p align="center">
+  <img src="assets/leafrank_logo.svg" width="120" alt="LeafRank logo">
+</p>
 
-# Intro
+<h1 align="center">LeafRank</h1>
 
 LeafRank is a probabilistic framework for single cell phylogeny, inferring
 the relative fitness of sampled tumor cells. LeafRank takes as input a
