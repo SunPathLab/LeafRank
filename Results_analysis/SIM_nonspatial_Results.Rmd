@@ -1,0 +1,1415 @@
+Script description:
+
+This script aims to streamline the nonspatial in silico analysis for LeafRank.
+The backbone for this script is plotting the main figures in manuscript, i.e. Figure 2(Base in silico experiment), Figure 3(In silico Parameter robustness), and part of Figure 4(In silico WGD Robustness).
+The majority data for non-spatial simulation are stored at "MATLAB/Simulation/Results".
+One can find the simulation setting in "MATLAB/Simulation/Simulation_description.txt".
+
+## Initialization
+```{r}
+library('reticulate')
+library("ape")
+library("tibble")
+library(tseries)
+library(ComplexHeatmap)
+library('readr')
+library("ggplot2")
+library("ggtreeExtra")
+library("ggpubr")
+library('ggtree')
+library('phangorn')
+library('tidyr')
+library('dplyr')
+library('gridExtra')
+library('patchwork')
+library('R.matlab')
+
+
+source('../R/fitness_inference.R')
+source('../R/tree_utils.R')
+#source(here('chronos_WGD.R'))
+
+```
+
+
+## Figure 2(Base in silico experiment)
+
+### Robustness w.r.t. simulation (Panel A data)
+
+We collected the inference accuracy as correlation from all 50 synthesis tumor.
+
+```{r}
+num_sim <- 50
+
+corr_true_ori <- rep(0,num_sim)
+max_Tf <- rep(0,num_sim)
+is_Lowest <- rep(0,num_sim)
+acc <- rep(0,num_sim)
+b_rates <- 0.2*1.2^(0:7)
+
+for (i in 1:num_sim){
+  batch_num <- as.character(i)
+  dir_name <- paste0("Results/non-spatial simulation results/SIM_",batch_num)
+  TT_name <- paste0(dir_name,"/P_fitness.out.rds")
+  Results_TT <- readRDS(TT_name)
+  
+  phy_ori <- readRDS(paste0(dir_name,"/Tree.rds"))
+  Fitness_true    <- as.numeric(phy_ori$fitness$V1)
+  max_Tf[i] <- max(Fitness_true)
+  
+  #Low_idx <- Fitness_true == min(Fitness_true)
+  
+  
+  mf_TT <- Results_TT$meanFitness[1:length(phy_ori$tip.label)]
+  
+  iL <- wilcox.test(mf_TT[Fitness_true == min(Fitness_true)], mf_TT[Fitness_true == min(Fitness_true) + 1], alternative = "less")
+  is_Lowest[i] <- iL$p.value
+  
+  corr_true_ori[i]<- cor(mf_TT,Fitness_true,method='spearman')
+  acc[i] <-sum(abs(mf_TT-b_rates[Fitness_true])/b_rates[Fitness_true])/length(Fitness_true)
+}
+
+results <- data.frame(
+  replicate = 1:50,
+  corr = corr_true_ori
+)
+p_result <- ggplot(results, aes(x = corr)) +
+  geom_histogram(
+    bins = 20,
+    fill = "#1F78B4",
+    color = "white",
+    alpha = 0.8
+  ) +
+  labs(
+    title = "Robustness of Ranking",
+    x = "Spearman correlation with true ranking",
+    y = "Frequency"
+  ) +
+  theme_minimal(base_size = 14)
+
+
+
+```
+
+### Plotting overall correlation (Panel A plot)
+
+```{r}
+
+plot_df <- data.frame(
+  idx    = 1:50,
+  Spearman = corr_true_ori
+)
+plot_df$color <- ifelse(plot_df$idx == 24, "#1F78B4",
+                        ifelse(plot_df$idx == 35, "#A13F55","black"))
+
+
+
+p <- ggplot(plot_df, aes(x = "All synthetic tumors", y = Spearman)) +
+  geom_violin(fill = "lightgrey") +
+  geom_jitter(aes(color = color), width = 0.05,  size = 3)+
+  scale_color_identity()+
+  theme_classic()
+
+
+```
+
+
+### Plotting Illustrative examples (Panel B plot)
+
+We compared the illustrative example 24(good) versus 35(bad). The batch index can be modified to check other examples.
+
+```{r}
+
+
+batch_num <- as.character(24)
+  
+  dir_name <- paste0("Results/non-spatial simulation results/SIM_",batch_num)
+  TT_name <- paste0(dir_name,"/P_fitness.out.rds")
+  Results_TT <- readRDS(TT_name)
+  
+  phy_TT <- readRDS(paste0(dir_name,"/Tree.rds"))
+  Fitness_true    <- as.numeric(phy_TT$fitness$V1)
+  mf_TT <- Results_TT$meanFitness[1:length(phy_TT$tip.label)]
+  
+  
+  Tf_ring <- tibble(
+    label = phy_TT$tip.label,
+    fitness = Fitness_true
+  )
+  
+  
+  TT_ring <- tibble(
+    label = phy_TT$tip.label,
+    fitness = mf_TT
+  )
+  
+  
+  
+  
+  p_Tf_24 <- ggtree(phy_TT, layout = 'circular', size = 0.3)+ labs(title = "True ranking") +
+    theme(legend.position = "right", plot.title = element_text(hjust = 0.5), legend.key.size = unit(0.2, "cm"), plot.margin = unit(c(0,0,0,0), "cm")) + 
+    geom_fruit(
+        data = Tf_ring,
+        geom = geom_bar,
+        mapping = aes(y = label, x = fitness, fill = fitness),
+        orientation = "y",
+        stat = "identity",
+        width = 0.3
+      ) +
+    scale_fill_gradient(low = "#93C477", high = "#1F78B4") + guides(fill = guide_colorbar(order = 1), color = guide_legend(order = 2)) # skyblue - darkblue.
+  
+  
+
+  
+  
+  p_TT_24 <- ggtree(phy_TT, layout = 'circular', size = 0.3)+labs(title = paste0("TT ranking (rho: ",format(round(corr_true_ori[24], 4), nsmall = 4),")")) +
+    theme(legend.position = "right", plot.title = element_text(hjust = 0.5), legend.key.size = unit(0.2, "cm"), plot.margin = unit(c(0,0,0,0), "cm")) + 
+    geom_fruit(
+        data = TT_ring,
+        geom = geom_bar,
+        mapping = aes(y = label, x = fitness, fill = fitness),
+        orientation = "y",
+        stat = "identity",
+        width = 0.3
+      ) +
+    scale_fill_gradient(low = "#93C477", high = "#1F78B4")+ guides(fill = guide_colorbar(order = 1), color = guide_legend(order = 2))
+
+
+  
+batch_num <- as.character(35)
+  
+  dir_name <- paste0("Results/non-spatial simulation results/SIM_",batch_num)
+  TT_name <- paste0(dir_name,"/P_fitness.out.rds")
+  Results_TT <- readRDS(TT_name)
+  
+  phy_TT <- readRDS(paste0(dir_name,"/Tree.rds"))
+  Fitness_true    <- as.numeric(phy_TT$fitness$V1)
+  mf_TT <- Results_TT$meanFitness[1:length(phy_TT$tip.label)]
+  
+  
+  Tf_ring <- tibble(
+    label = phy_TT$tip.label,
+    fitness = Fitness_true
+  )
+  
+  
+  TT_ring <- tibble(
+    label = phy_TT$tip.label,
+    fitness = mf_TT
+  )
+  
+  
+  
+  
+  p_Tf_35 <- ggtree(phy_TT, layout = 'circular', size = 0.3)+ labs(title = "True ranking") +
+    theme(legend.position = "right", plot.title = element_text(hjust = 0.5), legend.key.size = unit(0.2, "cm"), plot.margin = unit(c(0,0,0,0), "cm")) + 
+    geom_fruit(
+        data = Tf_ring,
+        geom = geom_bar,
+        mapping = aes(y = label, x = fitness, fill = fitness),
+        orientation = "y",
+        stat = "identity",
+        width = 0.3
+      ) +
+    scale_fill_gradient(low = "#93C477", high = "#1F78B4") + guides(fill = guide_colorbar(order = 1), color = guide_legend(order = 2)) 
+  
+  
+
+  
+  
+  p_TT_35 <- ggtree(phy_TT, layout = 'circular', size = 0.3)+labs(title = paste0("TT ranking (rho: ",format(round(corr_true_ori[35], 4), nsmall = 4),")")) +
+    theme(legend.position = "right", plot.title = element_text(hjust = 0.5), legend.key.size = unit(0.2, "cm"), plot.margin = unit(c(0,0,0,0), "cm")) + 
+    geom_fruit(
+        data = TT_ring,
+        geom = geom_bar,
+        mapping = aes(y = label, x = fitness, fill = fitness),
+        orientation = "y",
+        stat = "identity",
+        width = 0.3
+      ) +
+    scale_fill_gradient(low = "#93C477", high = "#1F78B4")+ guides(fill = guide_colorbar(order = 1), color = guide_legend(order = 2))
+
+
+p <- grid.arrange(p_Tf_24, p_TT_24, p_Tf_35, p_TT_35, nrow = 2, ncol = 2)
+
+```
+
+
+
+We examine the stability of LeafRank inference in two aspect, where the potential randomness introduced.
+1. Randomness introduced during the simulation.
+2. Randomness introduced during the sampling.
+
+
+
+### Robustness w.r.t. sampling (Panel C data)
+
+We collected the inference accuracy from all 100 re-sampled TT trees for tumor #20.
+
+```{r}
+corr_sub_ori_24 <- rep(0,50)
+corr_sub_ori_35 <- rep(0,50)
+
+for (ii in 1:50){
+  case_num <- "8"
+  batch_num <- "24"
+  sample_num <- as.character(ii)
+  TT_name_ori <- paste0("Results/non-spatial simulation results/SIM_", batch_num,"/P_fitness.out.rds")
+  Results_TT <- readRDS(TT_name_ori)
+  phy_TT <- Results_TT$phylo
+  mf_TT <- Results_TT$meanFitness[1:length(phy_TT$tip.label)]
+    
+  dir_name_sub <- paste0("Results/non-spatial simulation results/SIM_", batch_num,"/Subsampling/")
+  TT_name_sub <- paste0(dir_name_sub,"P_fitness-",case_num,"-",batch_num,"_",sample_num,".out.rds")
+  Results_TT_sub <- readRDS(TT_name_sub)
+  phy_TT_sub <- Results_TT_sub$phylo
+  index_sub <- as.numeric(phy_TT_sub$tip.label)
+  mf_TT_sub <- Results_TT_sub$meanFitness[1:length(phy_TT_sub$tip.label)]
+  corr_sub_ori_24[ii] <- cor(mf_TT_sub,mf_TT[index_sub],method='spearman')
+  
+  case_num <- "8"
+  batch_num <- "35"
+  sample_num <- as.character(ii)
+  TT_name_ori <- paste0("Results/non-spatial simulation results/SIM_", batch_num,"/P_fitness.out.rds")
+  Results_TT <- readRDS(TT_name_ori)
+  phy_TT <- Results_TT$phylo
+  mf_TT <- Results_TT$meanFitness[1:length(phy_TT$tip.label)]
+    
+  dir_name_sub <- paste0("Results/non-spatial simulation results/SIM_", batch_num,"/Subsampling/")
+  TT_name_sub <- paste0(dir_name_sub,"P_fitness-",case_num,"-",batch_num,"_",sample_num,".out.rds")
+  Results_TT_sub <- readRDS(TT_name_sub)
+  phy_TT_sub <- Results_TT_sub$phylo
+  index_sub <- as.numeric(phy_TT_sub$tip.label)
+  mf_TT_sub <- Results_TT_sub$meanFitness[1:length(phy_TT_sub$tip.label)]
+  corr_sub_ori_35[ii] <- cor(mf_TT_sub,mf_TT[index_sub],method='spearman')
+}
+
+
+
+```
+
+### Plotting subsampling results (C plots)
+
+```{r}
+df <- data.frame(
+  value = c(corr_sub_ori_24,corr_sub_ori_35),
+  group = rep(c("High accuracy","Low accuracy"), each = 50)
+)
+p <- ggplot(df, aes(x = value, fill = group)) +
+  geom_histogram(
+    binwidth = 0.018,
+    position = "identity"
+  )+ scale_x_continuous(
+    name = "Spearman correlation",
+    limits = c(-0.05,1.01),
+    breaks = c( 0, 0.2, 0.4, 0.6, 0.8, 1),
+labels = c(
+  "0\n(None)", 
+  "0.2\n(weak+)", 
+  "0.4\n(moderate+)", 
+  "0.6\n(strong+)", 
+  "0.8\n(very strong+)", 
+  "1\n(perfect+)"
+))+ 
+  labs(title = "Robustness under sub-sampling", y = "Frequency")+
+  scale_fill_manual(values = c("High accuracy" = "#425274","Low accuracy" = "#A13F55"))+
+  theme_minimal()
+
+
+
+```
+
+
+
+
+We then examine the relationship between sampling variability and inference accuracy. 
+Two types of sampling are consider:
+1. Sample from original population
+2. Subsample from sampled tree
+
+### Collecting all sampling inference results
+
+```{r}
+corr_true_re <- matrix(0, nrow = 50, ncol = 50)
+corr_true_ori <- rep(0,50)
+corr_ori_sub <- matrix(0, nrow = 50, ncol = 50)
+corr_ori_re_sub <- matrix()
+
+case_num <- "8"
+
+for (ii in 1:50){
+  batch_num <- as.character(ii)
+  for (jj in 1:50){
+    sample_num <- as.character(jj)
+    
+    # dir_name_re <- paste0("MATLAB/Simulation/Results/SIM_",case_num,"_",batch_num,"/Resampling/")
+    # TT_name_re <- paste0(dir_name_re,"P_fitness-",case_num,"-",batch_num,"_",sample_num,".out.rds")
+    # Results_TT_re <- readRDS(TT_name_re)
+    # phy_TT_re <- Results_TT_re$phylo
+    # mf_TT_re <- Results_TT_re$meanFitness[1:length(phy_TT_re$tip.label)]
+    # Fitness_true_re <- as.numeric(phy_TT_re$fitness$V1[as.numeric(phy_TT_re$tip.label)])
+    # corr_true_re[jj,ii-10] <- cor(mf_TT_re,Fitness_true_re,method='spearman')
+    
+    
+    TT_name_ori <- paste0("Results/non-spatial simulation results/SIM_", batch_num,"/P_fitness.out.rds")
+    Results_TT <- readRDS(TT_name_ori)
+    phy_TT <- Results_TT$phylo
+    mf_TT <- Results_TT$meanFitness[1:length(phy_TT$tip.label)]
+    Fitness_true <- as.numeric(phy_TT$fitness$V1[as.numeric(phy_TT$tip.label)])
+    corr_true_ori[ii] <- cor(mf_TT, Fitness_true, method = "spearman")
+    
+    dir_name_sub <- paste0("Results/non-spatial simulation results/SIM_", batch_num,"/Subsampling/")
+  TT_name_sub <- paste0(dir_name_sub,"P_fitness-",case_num,"-",batch_num,"_",sample_num,".out.rds")
+    Results_TT_sub <- readRDS(TT_name_sub)
+    phy_TT_sub <- Results_TT_sub$phylo
+    index_sub <- as.numeric(phy_TT_sub$tip.label)
+    mf_TT_sub <- Results_TT_sub$meanFitness[1:length(phy_TT_sub$tip.label)]
+    
+    corr_ori_sub[jj,ii] <- cor(mf_TT_sub,mf_TT[index_sub],method='spearman')
+    
+    
+    
+    
+  }
+}
+
+```
+
+
+### Visualization (D plots)
+
+```{r}
+
+# re_df <- data.frame(
+#   idx = 1:50,
+#   Acc = apply(corr_true_re,2,mean),
+#   re_var = apply(corr_true_re,2,var)
+# )
+# 
+# cor_test <- cor.test(re_df$re_var, re_df$Acc)
+# label_text <- paste0(
+#   "Pearson = ", round(cor_test$estimate, 2),
+#   "\nP = ", signif(cor_test$p.value, 2)
+# )
+# 
+# p_re <- ggplot(re_df, aes(x = Acc, y = re_var)) +
+#   geom_point(size = 3) +
+#   geom_smooth(method = "lm", se = TRUE) +
+#   annotate(
+#     "text",
+#     x = max(re_df$Acc) * 0.8,
+#     y = max(re_df$re_var) * 0.9,
+#     label = label_text,
+#     size = 5
+#   ) +
+#   labs(
+#     y = "Resampling Variance",
+#     x = "Prediction Accuracy (Spearman)"
+#   ) +
+#   theme_bw()+
+#   theme(
+#     axis.text = element_text(size = 14),
+#     plot.title = element_text(size = 18, face = "bold")
+#   )
+
+
+sub_df <- data.frame(
+  idx = 1:50,
+  Acc = corr_true_ori,
+  sub_var = apply(corr_ori_sub,2,var)
+)
+
+sub_df$color <- ifelse(plot_df$idx == 24, "#1F78B4",
+                        ifelse(plot_df$idx == 35, "#A13F55","black"))
+
+cor_test <- cor.test(sub_df$sub_var, sub_df$Acc)
+label_text <- paste0(
+  "Pearson = ", round(cor_test$estimate, 2),
+  "\nP = ", signif(cor_test$p.value, 2)
+)
+
+p_sub <- ggplot(sub_df, aes(x = Acc, y = sub_var)) +
+  geom_point(aes(color = color), size = 2.5)+
+  scale_color_identity()+
+  geom_smooth(method = "lm", se = TRUE) +
+  annotate(
+    "text",
+    x = max(sub_df$Acc) * 0.8,
+    y = max(sub_df$sub_var) * 0.9,
+    label = label_text,
+    size = 5
+  ) +
+  labs(
+    y = "Subsampling Variance",
+    x = "Prediction Accuracy (Spearman)"
+  ) +
+  theme_bw()+
+  theme(
+    axis.text = element_text(size = 14),
+    plot.title = element_text(size = 18, face = "bold")
+  )
+
+
+
+
+```
+
+#### Supplementary plots
+
+
+We collected all the inference results (TT tree) from 50 simulated tumor and store their correlation with true fitness as comparative plots in "MATLAB/Simulation/Results/Figures/SIM_plots".
+
+```{r}
+#i <- 35
+for (i in 1:50){
+  case_num <- "8"
+  batch_num <- as.character(i)
+  
+  dir_name <- paste0("MATLAB/Simulation/Results/SIM_",case_num,"_",batch_num)
+  TT_name <- paste0(dir_name,"/P_fitness-",case_num,"-",batch_num,"_TS1.out.rds")
+  Results_TT <- readRDS(TT_name)
+  
+  phy_TT <- readRDS(paste0(dir_name,"/Tree-",case_num,"-",batch_num,".rds"))
+  Fitness_true    <- as.numeric(phy_TT$fitness$V1)
+  mf_TT <- Results_TT$meanFitness[1:length(phy_TT$tip.label)]
+  
+  
+  Tf_ring <- tibble(
+    label = phy_TT$tip.label,
+    relative_fitness = Fitness_true
+  )
+  
+  
+  TT_ring <- tibble(
+    label = phy_TT$tip.label,
+    relative_fitness = mf_TT
+  )
+  
+  
+  
+  
+  p_Tf <- ggtree(phy_TT, layout = 'circular')+ labs(caption = "True relative fitness") +
+    theme(legend.position = "right", plot.caption = element_text(size = 12, hjust = 0.5), legend.key.size = unit(0.2, "cm")) + 
+    geom_fruit(
+        data = Tf_ring,
+        geom = geom_bar,
+        mapping = aes(y = label, x = relative_fitness, fill = relative_fitness),
+        orientation = "y",
+        stat = "identity",
+        width = 0.3
+      ) +
+    scale_fill_gradient(low = "#1F78B4", high = "darkblue") + guides(fill = guide_legend(order = 1), color = guide_legend(order = 2))
+  
+  
+
+  
+  
+  p_TT <- ggtree(phy_TT, layout = 'circular')+labs(caption = "TT Inferred relative fitness") +
+    theme(legend.position = "right", plot.caption = element_text(size = 12, hjust = 0.5), legend.key.size = unit(0.2, "cm")) + 
+    geom_fruit(
+        data = TT_ring,
+        geom = geom_bar,
+        mapping = aes(y = label, x = relative_fitness, fill = relative_fitness),
+        orientation = "y",
+        stat = "identity",
+        width = 0.3
+      ) +
+    scale_fill_gradient(low = "#1F78B4", high = "darkblue")+ guides(fill = guide_legend(order = 1), color = guide_legend(order = 2))
+  
+  
+  p <- (p_Tf|p_TT) + plot_annotation(title = paste0("Spearman Correlation: ", format(round(corr_true_ori[i], 4), nsmall = 4)))&
+  theme(plot.title = element_text(size = 18, face = "bold", hjust = 0.5))
+
+
+  ggsave(paste0("MATLAB/Simulation/Figures/SIM_plots/SIM-8-",batch_num,"-fitness.pdf"), plot = p, width = 7, height = 5)
+}
+
+```
+
+We examine the accuracy of fitness prediction measured by mean relative error for each synthesis tumor.
+
+```{r}
+p1 <- ggplot(data.frame(x = acc), aes(x)) + geom_histogram(binwidth = 0.01, fill = "#1F78B4", color = "white") + scale_x_continuous(
+    name = "Average Relative Absolute Error (%)",
+    limits = c(0,0.1),
+    breaks = c( 0, 0.02, 0.04, 0.06, 0.08, 0.1),
+labels = c(
+  "0%", 
+  "2%", 
+  "4%", 
+  "6%", 
+  "8%", 
+  "10%"
+)
+  ) + labs(title = "Accuracy across 50 tumors", y = "Frequency")
+
+#resample_corr <- corr_true_ori[20]
+
+#p2 <- ggplot(data.frame(x = corr_true_sub_ori), aes(x)) + geom_histogram(binwidth = 0.025, fill = "#A13F55", color = "white") + scale_x_continuous(
+#    name = "Spearman correlation significancy",
+#    limits = c(-0.05,1),
+#    breaks = c( 0, 0.2, 0.4, 0.6, 0.8, 1),
+#labels = c(
+#  "0\n(None)", 
+#  "0.2\n(weak+)", 
+#  "0.4\n(moderate+)", 
+#  "0.6\n(strong+)", 
+#  "0.8\n(very strong+)", 
+#  "1\n(perfect+)"
+#)) + labs(title = "Robustness of ranking under resampling", y = "Frequency")  + theme_minimal()
+
+#p <- p1/p2
+
+#ggsave("/projects/standard/ruping/shared/wu000766/Fitness_ranking/MATLAB/Simulation/Figures/SIM_robustness.svg", plot = p, width = 6, height = 8)
+
+```
+
+
+We collected the inference accuracy from all 100 re-sampled TT trees for tumor #20.
+
+```{r}
+corr_true_sub_ori <- rep(0,100)
+
+for (ii in 1:100){
+  case_num <- "8"
+  batch_num <- "20"
+  sample_num <- as.character(ii)
+  dir_name <- paste0("MATLAB/Simulation/Results/SIM_",case_num,"_",batch_num,"/Resampling/")
+  TT_name <- paste0(dir_name,"P_fitness-",case_num,"-",batch_num,"_",sample_num,".out.rds")
+  Results_TT <- readRDS(TT_name)
+  
+  phy_ori <- readRDS(paste0(dir_name,"Tree-",case_num,"-",batch_num,"_",sample_num,".rds"))
+  Fitness_true    <- as.numeric(phy_ori$fitness$V1)
+  mf_TT <- Results_TT$meanFitness[1:length(phy_ori$tip.label)]
+  corr_true_sub_ori[ii] <- cor(mf_TT,Fitness_true,method='spearman')
+}
+
+
+p_result <- ggplot(data.frame(x = corr_true_sub_ori), aes(x)) + geom_histogram(binwidth = 0.025, fill = "#A13F55", color = "white") + scale_x_continuous(
+    name = "Spearman correlation significancy",
+    limits = c(-0.05,1),
+    breaks = c( 0, 0.2, 0.4, 0.6, 0.8, 1),
+labels = c(
+  "0\n(None)", 
+  "0.2\n(weak+)", 
+  "0.4\n(moderate+)", 
+  "0.6\n(strong+)", 
+  "0.8\n(very strong+)", 
+  "1\n(perfect+)"
+)) + labs(title = "Robustness of ranking under resampling", y = "Frequency")  + theme_minimal()
+
+```
+
+
+```{r}
+
+
+p1 <- ggplot(data.frame(x = corr_true_ori), aes(x)) + geom_histogram(binwidth = 0.05, fill = "#1F78B4", color = "white") + scale_x_continuous(
+    name = "Spearman correlation significancy",
+    limits = c(-0.05,1),
+    breaks = c( 0, 0.2, 0.4, 0.6, 0.8, 1),
+labels = c(
+  "0\n(None)", 
+  "0.2\n(weak+)", 
+  "0.4\n(moderate+)", 
+  "0.6\n(strong+)", 
+  "0.8\n(very strong+)", 
+  "1\n(perfect+)"
+)
+  ) + labs(title = "Robustness of ranking", y = "Frequency")
+
+resample_corr <- corr_true_ori[20]
+
+p2 <- ggplot(data.frame(x = corr_true_sub_ori), aes(x)) + geom_histogram(binwidth = 0.025, fill = "#A13F55", color = "white") + scale_x_continuous(
+    name = "Spearman correlation significancy",
+    limits = c(-0.05,1),
+    breaks = c( 0, 0.2, 0.4, 0.6, 0.8, 1),
+labels = c(
+  "0\n(None)", 
+  "0.2\n(weak+)", 
+  "0.4\n(moderate+)", 
+  "0.6\n(strong+)", 
+  "0.8\n(very strong+)", 
+  "1\n(perfect+)"
+)) + labs(title = "Robustness of ranking under resampling", y = "Frequency")  + theme_minimal()
+
+p <- p1/p2
+
+#ggsave("/projects/standard/ruping/shared/wu000766/Fitness_ranking/MATLAB/Simulation/Figures/SIM_robustness.svg", plot = p, width = 6, height = 8)
+
+
+```
+
+## Figure 3(In silico parameter robustness)
+
+### Collect Panel A data
+
+```{r}
+param_cor_df <- data.frame(
+    Ori = rep(0,50),
+    rho001 = rep(0,50),
+    rho00005= rep(0,50),
+    TS6    = rep(0,50),
+    d15    = rep(0,50),
+    Type4li = rep(0,50),
+    Type4log = rep(0,50),
+    mu001  = rep(0,50),
+    delta1 = rep(0,50)
+)
+
+
+type_num_hist <- rep(0,50)
+
+for (case_i in 1:length(colnames(param_cor_df))){
+  case_name <- colnames(param_cor_df)[case_i]
+  case_num <- "8"
+  for (ii in 1:50){
+    
+    batch_num <- as.character(ii)
+    dir_name <- paste0("Results/non-spatial simulation results/SIM_",batch_num)
+    if (case_i == 1){
+      TT_name <- paste0(dir_name,"/P_fitness.out.rds")
+    }else{
+      TT_name <- paste0(dir_name,"/P_fitness_", case_name,".out.rds")
+    }
+    
+    Results_TT <- readRDS(TT_name)
+    
+    phy_ori <- readRDS(paste0(dir_name,"/Tree.rds"))
+    Fitness_true    <- as.numeric(phy_ori$fitness$V1)
+    type_num_hist[ii] <- dim(table(Fitness_true))
+    mf_TT <- Results_TT$meanFitness[1:length(phy_ori$tip.label)]
+    param_cor_df[ii,case_i]<- cor(mf_TT,Fitness_true,method='spearman')
+  }
+}
+
+```
+
+### Panel A
+
+```{r}
+
+
+#col_names  <- c("Ori","2 Types", "4 Types","6 Types", "7 Types", expression(paste(lambda,"+")), expression(paste(mu, "+")), expression(paste(rho, "-")),expression(paste(rho,"+")), "Range -", "Range +","Time scale -", "Time scale +")
+#svg("MATLAB/Simulation/Figures/Parameter's effect.svg", width = 15, height = 5)
+#png("MATLAB/Simulation/Figures/Parameter's effect.png", width = 1000, height = 500)
+boxplot(param_cor_df, ylab = "Spearman Correlation")
+#dev.off()
+
+```
+
+
+
+### Panel B and C
+
+In panel B and C, we compare the fitness density under all different scenario ("p_u","mp_ht_u") with the original inference ("p","mp_ht") and True Fitness ("p_t","mp_FT_ht").
+The fitness plots are start with "p", and the misspecified fitness in Panel B is "p_u".
+The variable "U_case" controls the scenario, including
+1. TS2
+2. TS4
+3. TS6
+4. TS8
+5. d15
+6. delta1
+7. mu001
+8. rho00005
+9. rho001
+10. Type4log    
+11. Type4li
+When plotting the mp_ht_u, it is necessary to adjust the column names according to the experimental design described in the manuscript as the number of fitness types is reduced to 4.
+
+
+```{r}
+# case_num <- "8li"
+batch_num <- "38"
+U_case <- "mu001"
+dir_name <- paste0("Results/non-spatial simulation results/SIM_",batch_num,"/")
+results_file <- paste0(dir_name,"P_fitness.out.rds")
+Results <- readRDS(results_file)
+tree <- Results$phylo
+meanFitness <- Results$meanFitness[1:length(tree$tip.label)]
+mp <- Results$marginalProb[1:length(tree$tip.label),]
+colnames(mp) <- as.character(seq(0.2,0.8, length.out = 8))
+hc_tree <- as.hclust(tree)
+mp_ht <- Heatmap(
+  mp,
+  cluster_rows = hc_tree,
+  cluster_columns = FALSE,
+  col = c("#deebf7","#3182bd"), # This color can be used if necessary
+  column_names_rot = 90,
+  border = TRUE
+)
+
+
+
+Fitness_true    <- as.numeric(tree$fitness$V1)
+mp_FT <- matrix(0, nrow = length(Fitness_true), ncol = 8)
+mp_FT[cbind(seq_len(length(Fitness_true)), Fitness_true)] <- 1
+colnames(mp_FT) <- as.character(seq(0.2,0.8, length.out = 8))
+mp_FT_ht <- Heatmap(
+  mp_FT,
+  cluster_rows = hc_tree,
+  cluster_columns = FALSE,
+  col = c("#deebf7","#3182bd"),
+  column_gap = unit(2,"mm"),
+  column_names_rot = 90,
+  border = TRUE
+)
+
+#svg("MATLAB/Simulation/Figures/(Misspecified Inference) True Fitness.svg", width = 4, height = 6)
+#mp_FT_ht
+#dev.off()
+
+
+
+ring_t <- tibble(
+  label = tree$tip.label,
+  fitness = Fitness_true
+)
+  
+
+
+  
+  p_t <- ggtree(tree, layout = 'circular')+ ggtitle(paste0("True Fitness")) +
+    labs(fill = "Fitness") +
+    theme(legend.position = "bottom", 
+          plot.title = element_text(size = 12, hjust = 0.5, vjust = -1, face = "bold"), 
+          legend.key.size = unit(0.2, "cm"),
+          legend.title.position = 'top') + 
+    geom_fruit(
+        data = ring_t,
+        geom = geom_bar,
+        mapping = aes(y = label, x = fitness, fill = fitness),
+        orientation = "y",
+        stat = "identity",
+        width = 0.3
+      ) +
+    scale_fill_gradient(low = "#93C477", high = "#1F78B4") + 
+    guides(fill = guide_colorbar(order = 1,
+                                 barwidth = unit(6, "cm")))
+
+
+
+
+  
+ring <- tibble(
+  label = tree$tip.label,
+  fitness = meanFitness
+)
+  
+
+
+  
+  p <- ggtree(tree, layout = 'circular')+ ggtitle(paste0("Valid Inference: (\u03C1: ", format(round(cor(Fitness_true,meanFitness,method = 'spearman'), 4), nsmall = 4), ")")) +
+    labs(fill = "Fitness") +
+    theme(legend.position = "bottom", 
+          plot.title = element_text(size = 12, hjust = 0.5, vjust = -1, face = "bold"), 
+          legend.key.size = unit(0.2, "cm"),
+          legend.title.position = 'top') + 
+    geom_fruit(
+        data = ring,
+        geom = geom_bar,
+        mapping = aes(y = label, x = fitness, fill = fitness),
+        orientation = "y",
+        stat = "identity",
+        width = 0.3
+      ) +
+    scale_fill_gradient(low = "#93C477", high = "#1F78B4") + 
+    guides(fill = guide_colorbar(order = 1,
+                                 barwidth = unit(6, "cm")))
+  
+  #ggsave(paste0("Andrew2025/Results/Figures/OV-",OV_num,"_Fitness_c.svg"),plot = p, width = 6, height = 8)
+  
+  
+  
+
+results_file_u <- paste0(dir_name,"P_fitness_", U_case,".out.rds")
+Results_u <- readRDS(results_file_u)
+tree_u <- Results_u$phylo
+meanFitness_u <- Results_u$meanFitness[1:length(tree$tip.label)]
+mp_u <- Results_u$marginalProb[1:length(tree$tip.label),]
+hc_tree_u <- as.hclust(tree_u)
+b_rates <- 0.2*1.2^(0:7)
+colnames(mp_u) <- as.character(0.2*1.2^(0:7))
+mp_ht_u <- Heatmap(
+  mp_u,
+  cluster_rows = hc_tree,
+  cluster_columns = FALSE,
+  col = c("#deebf7","#3182bd"),
+  column_names_rot = 90,
+  border = TRUE
+)
+
+km_HL <- kmeans(meanFitness_u, centers = 3, nstart = 10)
+  
+ring_u <- tibble(
+  label = tree_u$tip.label,
+  fitness = meanFitness_u
+)
+  
+  
+
+  
+  p_u <- ggtree(tree_u, layout = 'circular')+ ggtitle(paste0("Misspecified Inference: (\u03C1: ", format(round(cor(Fitness_true,meanFitness_u,method = 'spearman'), 4), nsmall = 4), ")")) +
+    labs(fill = "Fitness") +
+    theme(legend.position = "bottom", 
+          plot.title = element_text(size = 12, hjust = 0.5, vjust = -1, face = "bold"), 
+          legend.key.size = unit(0.2, "cm"),
+          legend.title.position = 'top') + 
+    geom_fruit(
+        data = ring_u,
+        geom = geom_bar,
+        mapping = aes(y = label, x = fitness, fill = fitness),
+        orientation = "y",
+        stat = "identity",
+        width = 0.3
+      ) +
+    scale_fill_gradient(low = "#93C477", high = "#1F78B4") + 
+    guides(fill = guide_colorbar(order = 1,
+                                 barwidth = unit(6, "cm")))
+
+```
+
+
+
+
+
+
+### Detailed study with Birth rates spacing
+
+This section includes the analysis of reproducing the Figure S2.
+
+```{r}
+param_cor_df <- data.frame(
+    Ori = rep(0,50),
+    TS4Type4li = rep(0,50),
+    TS4Type4log = rep(0,50)
+)
+
+True_var <- rep(0,50)
+
+for (case_i in 1:length(colnames(param_cor_df))){
+  case_name <- colnames(param_cor_df)[case_i]
+  case_num <- "8"
+  for (ii in 1:50){
+    
+    batch_num <- as.character(ii)
+    dir_name <- paste0("MATLAB/Simulation/Results/SIM_",case_num,"_",batch_num)
+    if (case_i == 1){
+    TT_name <- paste0(dir_name,"/P_fitness-",case_num,"-",batch_num,"_TS4.out.rds")     }
+    else{
+    TT_name <- paste0(dir_name,"/P_fitness-",case_num,"-",batch_num,"_",case_name,".out.rds")
+    }
+    Results_TT <- readRDS(TT_name)
+    
+    phy_ori <- readRDS(paste0(dir_name,"/Tree-",case_num,"-",batch_num,".rds"))
+    Fitness_true    <- as.numeric(phy_ori$fitness$V1)
+    True_var[ii] <- sd(Fitness_true)
+    mf_TT <- Results_TT$meanFitness[1:length(phy_ori$tip.label)]
+    param_cor_df[ii,case_i]<- cor(mf_TT,Fitness_true,method="spearman")
+  }
+}
+
+
+
+
+```
+
+
+```{r}
+param_cor_li_df <- data.frame(
+    Ori_li = rep(0,50),
+    TS4Type4li = rep(0,50),
+    TS4Type4log = rep(0,50)
+)
+
+True_var_li <- rep(0,50)
+
+for (case_i in 1:length(colnames(param_cor_li_df))){
+  case_name <- colnames(param_cor_li_df)[case_i]
+  case_num <- "8li"
+  for (ii in 1:50){
+    
+    batch_num <- as.character(ii)
+    dir_name <- paste0("MATLAB/Simulation/Results/SIM_",case_num,"_",batch_num)
+    if (case_i == 1){
+      TT_name <- paste0(dir_name,"/P_fitness-",case_num,"-",batch_num,"_TS4li.out.rds")
+    }else{
+      TT_name <- paste0(dir_name,"/P_fitness-",case_num,"-",batch_num,"_", case_name,".out.rds")
+    }
+    Results_TT <- readRDS(TT_name)
+    
+    phy_ori <- readRDS(paste0(dir_name,"/Tree-",case_num,"-",batch_num,".rds"))
+    Fitness_true    <- as.numeric(phy_ori$fitness$V1)
+    True_var_li[ii] <- sd(Fitness_true)
+    mf_TT <- Results_TT$meanFitness[1:length(phy_ori$tip.label)]
+    param_cor_li_df[ii,case_i]<- cor(mf_TT,Fitness_true,method='spearman')
+  }
+}
+
+```
+
+## Figure 4 (In silico WGD robutness) Panel B, Panel D, and Panel F
+
+### Collecting correlation  (non spatial) Data for panel F
+
+```{r}
+num_sim <- 50
+
+corr_true_ori <- rep(0,num_sim)
+corr_true_wgd <- rep(0,num_sim)
+corr_true_dm  <- rep(0,num_sim)
+corr_ori_wgd  <- rep(0,num_sim)
+
+
+for (i in 1:num_sim){
+  case_num <- "8"
+  batch_num <- as.character(i)
+  dir_name <- paste0("Results/non-spatial simulation results/SIM_WGD_",batch_num)
+  TT_name <- paste0(dir_name,"/P_fitness_TT.out.rds")
+  Results_TT <- readRDS(TT_name)
+  DM_name <- paste0(dir_name,"/P_fitness_DM.out.rds")
+  Results_DM <- readRDS(DM_name)
+  WGD_name <- paste0(dir_name,"/P_fitness_WGD.out.rds")
+  Results_WGD <- readRDS(WGD_name)
+  
+  phy_ori <- readRDS(paste0(dir_name,"/Tree.rds"))
+  Fitness_true    <- as.numeric(phy_ori$fitness$V1)
+  
+  mf_TT <- Results_TT$meanFitness[1:length(phy_ori$tip.label)]
+  mf_DM <- Results_DM$meanFitness[1:length(phy_ori$tip.label)]
+  mf_WGD <- Results_WGD$meanFitness[1:length(phy_ori$tip.label)]
+  
+  corr_true_ori[i]<- cor(mf_TT,Fitness_true,method='spearman')
+  corr_true_dm[i]<- cor(mf_DM,Fitness_true,method='spearman')
+  corr_true_wgd[i]<- cor(mf_WGD,Fitness_true,method='spearman')
+  corr_ori_wgd[i] <- cor(mf_TT,mf_WGD,method = 'spearman')
+}
+
+#writeMat("Corr_results.mat",TT = corr_true_ori, DM = corr_true_dm, WGD = corr_true_wgd)
+```
+
+
+### Panel B
+
+```{r}
+i <- 20
+#for (i in 1:50){
+  case_num <- "8"
+  batch_num <- as.character(i)
+  
+  dir_name <- paste0("Results/non-spatial simulation results/SIM_WGD_",batch_num)
+  TT_name <- paste0(dir_name,"/P_fitness_TT.out.rds")
+  Results_TT <- readRDS(TT_name)
+  DM_name <- paste0(dir_name,"/P_fitness_DM.out.rds")
+  Results_DM <- readRDS(DM_name)
+  WGD_name <- paste0(dir_name,"/P_fitness_WGD.out.rds")
+  Results_WGD <- readRDS(WGD_name)
+  tip_wgd <- unlist(read.csv(paste0(dir_name,'/WGD.txt'),header = FALSE),use.names = FALSE)-1
+  
+  phy_ori <- readRDS(paste0(dir_name,"/Tree.rds"))
+  Fitness_true    <- as.numeric(phy_ori$fitness$V1)
+  mf_TT <- Results_TT$meanFitness[1:length(phy_ori$tip.label)]
+  mf_DM <- Results_DM$meanFitness[1:length(phy_ori$tip.label)]
+  mf_WGD <- Results_WGD$meanFitness[1:length(phy_ori$tip.label)]
+  phy_DM <- Results_DM$phylo
+  phy_WGD <- Results_WGD$phylo
+  
+  wgd_groups <- ifelse(tip_wgd == 0, "WGD -","WGD +")
+  
+  groups <- data.frame(
+    label = phy_ori$tip.label,
+    group = wgd_groups
+  )
+  otu_groups <- split(groups$label, groups$group)
+  tree_grouped <- groupOTU(phy_ori, otu_groups)
+  tree_DM_grouped <- groupOTU(phy_DM, otu_groups)
+  tree_WGD_grouped <- groupOTU(phy_WGD, otu_groups)
+  
+  
+  Tf_ring <- tibble(
+    label = phy_ori$tip.label,
+    fitness = Fitness_true
+  )
+  
+  
+  TT_ring <- tibble(
+    label = phy_ori$tip.label,
+    fitness = mf_TT
+  )
+  
+  DM_ring <- tibble(
+    label = phy_ori$tip.label,
+    fitness = mf_DM
+  )
+  
+  WGD_ring <- tibble(
+    label = phy_ori$tip.label,
+    fitness = mf_WGD
+  )
+  
+  
+  p_Tf <- ggtree(tree_grouped, aes(color=group), layout = 'circular', size = 0.3)+ 
+    ggtitle("True ranking") +
+    theme(plot.title = element_text(size = 14, vjust = -2.5,hjust = 0.5, face = "bold"), 
+          legend.position = "bottom",
+          legend.key.size = unit(0.3, "cm"),
+          legend.title = element_text(size = 14, face = "bold"),
+          legend.text = element_text(size = 12, face = "bold")
+          ) + 
+    geom_fruit(
+        data = Tf_ring,
+        geom = geom_bar,
+        mapping = aes(y = label, x = fitness, fill = fitness),
+        orientation = "y",
+        stat = "identity",
+        width = 0.3
+      ) +
+    scale_fill_gradient(low = "#93C477", high = "#1F78B4") + 
+    guides(fill = guide_colorbar(order = 1,
+                                 barwidth = unit(6, "cm"),
+                                 barheight = unit(0.4,"cm"),
+                                 title.position = "top"), 
+           color = guide_legend(order = 2,
+                                title.position = "top"))
+  p_Tf <- p_Tf + scale_color_manual(values = c("WGD -" = "#435274", "WGD +" = "#A13F55"))
+  
+  
+
+  
+  
+  p_TT <- ggtree(tree_grouped, aes(color=group), layout = 'circular', size = 0.3)+
+    ggtitle(paste0("TT ranking (\u03C1: ",format(round(corr_true_ori[i], 4), nsmall = 4),")")) +
+    theme(plot.title = element_text(size = 14, vjust = -2.5,hjust = 0.5, face = "bold"), 
+          legend.position = "bottom",
+          legend.key.size = unit(0.3, "cm"),
+          legend.title = element_text(size = 14, face = "bold"),
+          legend.text = element_text(size = 12, face = "bold")
+          ) + 
+    geom_fruit(
+        data = TT_ring,
+        geom = geom_bar,
+        mapping = aes(y = label, x = fitness, fill = fitness),
+        orientation = "y",
+        stat = "identity",
+        width = 0.3
+      ) +
+    scale_fill_gradient(low = "#93C477", high = "#1F78B4") + 
+    guides(fill = guide_colorbar(order = 1,
+                                 barwidth = unit(6, "cm"),
+                                 barheight = unit(0.4,"cm"),
+                                 title.position = "top"), 
+           color = guide_legend(order = 2, 
+                                title.position = "top"))
+  p_TT <- p_TT + scale_color_manual(values = c("WGD -" = "#435274", "WGD +" = "#A13F55"))
+  
+  rng <- range(DM_ring$fitness, na.rm = TRUE)
+  b_rng <- c(rng[1] + 0.05*diff(rng), rng[2] - 0.05*diff(rng))
+  
+  p_DM <- ggtree(tree_DM_grouped, aes(color=group), layout = 'circular', size = 0.3)+
+    ggtitle(paste0("DM ranking (\u03C1: ",format(round(corr_true_dm[i], 4), nsmall = 4),")")) +
+    theme(plot.title = element_text(size = 14, vjust = -2.5,hjust = 0.5, face = "bold"), 
+          legend.position = "bottom",
+          legend.key.size = unit(0.3, "cm"),
+          legend.title = element_text(size = 14, face = "bold"),
+          legend.text = element_text(size = 12, face = "bold")
+          ) + 
+    geom_fruit(
+        data = DM_ring,
+        geom = geom_bar,
+        mapping = aes(y = label, x = fitness, fill = fitness),
+        orientation = "y",
+        stat = "identity",
+        width = 0.3
+      ) +
+    scale_fill_gradient(low = "#93C477", high = "#1F78B4",
+                        limits = rng,
+                        breaks = b_rng,
+                        labels = c("Low","High"),
+                        name = "Fitness") + 
+    guides(fill = guide_colorbar(order = 1,
+                                 barwidth = unit(6, "cm"),
+                                 barheight = unit(0.4,"cm"),
+                                 title.position = "top"), 
+           color = guide_legend(order = 2,
+                                title.position = "top"))
+  p_DM <- p_DM + scale_color_manual(values = c("WGD -" = "#435274", "WGD +" = "#A13F55"))
+  
+  p_WGD <- ggtree(tree_WGD_grouped, aes(color=group), layout = 'circular', size = 0.3)+
+    ggtitle(paste0("WGD ranking (\u03C1: ",format(round(corr_true_wgd[i], 4), nsmall = 4),")")) +
+    theme(plot.title = element_text(size = 14, vjust = -2.5,hjust = 0.5, face = "bold"), 
+          legend.position = "bottom",
+          legend.key.size = unit(0.3, "cm"),
+          legend.title = element_text(size = 14, face = "bold"),
+          legend.text = element_text(size = 12, face = "bold")
+          ) + 
+    geom_fruit(
+        data = WGD_ring,
+        geom = geom_bar,
+        mapping = aes(y = label, x = fitness, fill = fitness),
+        orientation = "y",
+        stat = "identity",
+        width = 0.3
+      ) +
+    scale_fill_gradient(low = "#93C477", high = "#1F78B4") + 
+    guides(fill = guide_colorbar(order = 1,
+                                 barwidth = unit(6, "cm"),
+                                 barheight = unit(0.4,"cm"),
+                                 title.position = "top"), 
+           color = guide_legend(order = 2,
+                                title.position = "top"))
+  p_WGD <- p_WGD + scale_color_manual(values = c("WGD -" = "#435274", "WGD +" = "#A13F55"))
+  
+  
+  
+  
+  shard_legend <- cowplot::get_legend(p_DM)
+  
+  p_Tf_n <- p_Tf + theme(legend.position = "none")
+  p_TT_n <- p_TT + theme(legend.position = "none")
+  p_DM_n <- p_DM + theme(legend.position = "none")
+  p_WGD_n <- p_WGD + theme(legend.position = "none")
+  
+  
+
+  title_grob <- textGrob(
+    "Non-Spatial Simulation Analysis",
+    gp = gpar(fontface = "bold", fontsize = 16),
+    just = "center")
+  
+  p <- grid.arrange(
+    arrangeGrob(p_Tf_n,p_TT_n,p_DM_n,p_WGD_n, nrow = 1), 
+    shard_legend,
+    title_grob,
+    heights = c(0.5,0.1,0.1),
+    ncol = 1
+  )
+
+  
+```
+
+
+### Panel D
+
+```{r}
+case_num <- "8"
+batch_num <- as.character(20)
+
+  
+
+dir_name     <- paste0("Results/non-spatial simulation results/SIM_WGD_", batch_num,"/")
+    DM_name <- paste0(dir_name,"Tree-DM.rds")
+    TT_name <- paste0(dir_name,"Tree.rds") # Here we use true total time tree to determine the true overall time horizon
+    
+    
+    
+    
+    #Ori_tree <- read.tree(name)
+    #Ori_tree <- readRDS(name)
+    DM_tree  <- readRDS(DM_name)
+    TT_tree  <- readRDS(TT_name)
+    WGD_file <- paste0(dir_name,"ultra-tree.csv")
+    
+    #discrete_tree <- readRDS(discrete_file)
+    #WGD_R_tree <- readRDS(WGD_R_file)
+    WGD_Results <- read.csv(WGD_file, header = FALSE)
+    WGD_Results <- WGD_Results[,1]
+    WGD_tree <- DM_tree
+    e1 <- WGD_tree$edge[,1]
+    e2 <- WGD_tree$edge[,2]
+    li <- length(WGD_Results)
+    
+    WGD_ages <- c(rep(0,li),1,WGD_Results[3:length(WGD_Results)])
+    WGD_tree$edge.length <- WGD_ages[e1] - WGD_ages[e2]
+    DM_tree$node_wgd <- unlist(read.csv(paste0(dir_name,'WGD.txt'),header = FALSE),use.names = FALSE)
+    DM_tree$node_wgd <- c(DM_tree$node_wgd-1,rep(-1,DM_tree$Nnode))
+    DM_tree <- label_internal_nodes(DM_tree)
+
+y <- DM_tree$edge.length[DM_tree$edge_wgd == 1]
+t <- WGD_tree$edge.length[DM_tree$edge_wgd == 1]
+
+
+WGD_rates <- WGD_Results[2]
+
+tau <- WGD_rates*t
+n   <- length(y)
+
+k_max <- max(y)
+k <- 0:k_max
+O <- tabulate(y+1, nbins = k_max+1)
+E <- sapply(k, function(kk){
+  sum(dpois(kk,lambda = tau))
+})
+
+
+obs_stat <- 2 * sum(
+  ifelse(y == 0,
+         0,
+         y * log(y / tau)) -
+    (y - tau)
+)
+
+B <- 1000
+sim_stat <- numeric(B)
+for (b in 1:B) {
+  sim_branch <- rpois(length(tau), tau)
+  
+  sim_stat[b] <- 2 * sum(
+    ifelse(sim_branch == 0,
+           0,
+           sim_branch * log(sim_branch / tau)) -
+      (sim_branch -  tau)
+  )
+}
+
+p_sim_nWGD <- mean(sim_stat >= obs_stat)
+p_sim_nWGD
+
+
+
+#svg("MATLAB/Simulation/Figures/SIM_20_rooto.svg", width = 9, height = 4)
+
+par(mfrow = c(1,2), oma = c(0,0,3,0))
+
+y <- DM_tree$edge.length[DM_tree$edge_wgd == 0]
+t <- WGD_tree$edge.length[DM_tree$edge_wgd == 0]
+
+
+WGD_rates <- WGD_Results[1]
+
+tau <- WGD_rates*t
+n   <- length(y)
+
+k_max <- max(y)
+k <- 0:k_max
+O <- tabulate(y+1, nbins = k_max+1)
+E <- sapply(k, function(kk){
+  sum(dpois(kk,lambda = tau))
+})
+
+sqrt_exp <- sqrt(E)
+sqrt_obs <- sqrt(O)
+
+signs <- sign(sqrt_exp - sqrt_obs)
+sign_nWGD <- runs.test(as.factor(signs))
+
+plot(k, sqrt_exp,
+     type = "n",
+     ylim = range(c(sqrt_exp, sqrt_exp - sqrt_obs)),
+     xlab = "WGD- Branch Length",
+     ylab = "\u221AFrequency",
+     font.lab = 2)
+
+# expected curve
+lines(k, sqrt_exp, lwd = 2)
+
+# hanging bars
+segments(x0 = k,
+         y0 = sqrt_exp,
+         x1 = k,
+         y1 = sqrt_exp - sqrt_obs,
+         lwd = 3,
+         col = "#435274") # WGD: #F8766D, non-WGD: #00BFC4
+
+abline(h = 0, lty = 2)
+
+legend("topright",
+       legend = c("Expected","Observed"),
+       col = c("black","#435274"),
+       lty = 1,
+       lwd = 3,
+       bty = "n")
+
+
+y <- DM_tree$edge.length[DM_tree$edge_wgd == 1]
+t <- WGD_tree$edge.length[DM_tree$edge_wgd == 1]
+
+
+WGD_rates <- WGD_Results[2]
+
+tau <- WGD_rates*t
+n   <- length(y)
+
+k_max <- max(y)
+k <- 0:k_max
+O <- tabulate(y+1, nbins = k_max+1)
+E <- sapply(k, function(kk){
+  sum(dpois(kk,lambda = tau))
+})
+
+sqrt_exp <- sqrt(E)
+sqrt_obs <- sqrt(O)
+
+obs_stat <- 2 * sum(
+  ifelse(y == 0,
+         0,
+         y * log(y / tau)) -
+    (y - tau)
+)
+
+B <- 1000
+sim_stat <- numeric(B)
+for (b in 1:B) {
+  sim_branch <- rpois(length(tau), tau)
+  
+  sim_stat[b] <- 2 * sum(
+    ifelse(sim_branch == 0,
+           0,
+           sim_branch * log(sim_branch / tau)) -
+      (sim_branch -  tau)
+  )
+}
+
+p_sim_WGD <- mean(sim_stat >= obs_stat)
+p_sim_WGD
+
+
+plot(k, sqrt_exp,
+     type = "n",
+     ylim = range(c(sqrt_exp, sqrt_exp - sqrt_obs)),
+     xlab = "WGD+ Branch length",
+     ylab = "",
+     font.lab = 2)
+
+# expected curve
+lines(k, sqrt_exp, lwd = 2)
+
+# hanging bars
+segments(x0 = k,
+         y0 = sqrt_exp,
+         x1 = k,
+         y1 = sqrt_exp - sqrt_obs,
+         lwd = 3,
+         col = "#A13F55") # WGD: #F8766D, non-WGD: #00BFC4
+
+abline(h = 0, lty = 2)
+
+
+mtext("Hanging Rootogram for Non-Spatial Simulation",
+      side = 3, outer = TRUE, line = 1, cex = 1.3, font = 2)
+
+legend("topright",
+       legend = c("Expected","Observed"),
+       col = c("black","#A13F55"),
+       lty = 1,
+       lwd = 3,
+       bty = "n")
+
+
+
+
+#dev.off()
+
+
+
+
+signs <- sign(sqrt_exp - sqrt_obs)
+sign_WGD <- runs.test(as.factor(signs))
+```
+
+
+
+
+
+
+

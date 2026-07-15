@@ -86,7 +86,8 @@ distanceMatrix2Tree <- function(distanceMatrix) {
 #' @importFrom doParallel registerDoParallel
 #' @export
 LeafRank <- function(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, nu, T_vector, non_negativity_cutoff, n_threads=1){
-  
+    params = list(rho, d_t, time_scale, b_rates, d_rates, nu, T_vector, non_negativity_cutoff)
+    names(params) <- c('rho','d_t','time_scale', 'b_rates', 'd_rates', 'nu', 'T_vector','non_negativity_cutoff')
     argument = list(b_rates, d_rates, nu)
 
     #start calculation
@@ -182,7 +183,7 @@ LeafRank <- function(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, nu, T
     mean_result <- mean_fitness(phy, marginal_prob, argument)
 
     # saveResult
-    outRes = list(phylo = phy, meanFitness = mean_result, upMessages = up_messages, downMessages = down_messages, marginalProb = marginal_prob)
+    outRes = list(phylo = phy, meanFitness = mean_result, upMessages = up_messages, downMessages = down_messages, marginalProb = marginal_prob, input_params = params)
     saveRDS(outRes, file=outFile)
 
     return("success!")

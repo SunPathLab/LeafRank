@@ -1,0 +1,673 @@
+Script description:
+
+This script aims to streamline the spatial in silico analysis for LeafRank.
+The backbone for this script is plotting the main figures in manuscript, i.e. part of Figure 4(In silico WGD Robustness).
+
+
+
+
+### Initialization
+
+```{r}
+library('reticulate')
+library("ape")
+library("tibble")
+library('readr')
+library("ggplot2")
+library("ggtreeExtra")
+library("ggpubr")
+library('here')
+library('ggtree')
+library('phangorn')
+library('tidyr')
+library('dplyr')
+library('gridExtra')
+library('patchwork')
+
+source('../R/fitness_inference.R')
+source('../R/tree_utils.R')
+
+
+```
+
+
+
+
+## Figure 4(In silico WGD robustness)
+
+
+
+
+### Collecting important metrics 
+
+The following scripts are used to collect all the correlation among 50 (simulation) times 50 (resampling) results.
+Besides, several metrics are computed:
+1. maximum fitness
+2. variance of fitness
+
+
+```{r}
+num_batch <- 50
+
+corr_true_TT <- matrix(0, 50, 50, byrow = FALSE)
+corr_true_WGD <- matrix(0, 50, 50, byrow = FALSE)
+corr_true_DM  <- matrix(0, 50, 50, byrow = FALSE)
+corr_TT_WGD  <- matrix(0, 50, 50, byrow = FALSE)
+max_fitness <- matrix(0, 50, 50, byrow = FALSE)
+max_fitness_TT <- matrix(0, 50, 50, byrow = FALSE)
+max_fitness_DM <- matrix(0, 50, 50, byrow = FALSE)
+max_fitness_WGD <- matrix(0, 50, 50, byrow = FALSE)
+var_fitness <- matrix(0, 50, 50, byrow = FALSE)
+wrong_WGD <- matrix(0, 50, 50, byrow = FALSE)
+wrong_DM  <- matrix(0, 50, 50, byrow = FALSE)
+
+for (s_idx in 1:50){
+
+
+  sim_num <- as.character(s_idx)
+  print(sim_num)
+
+
+
+
+    batch_num <- as.character(i)
+    dir_name <- paste0("Results/spatial simulation results/SIM-",sim_num,"/")
+    
+    
+    Results_TT <- tryCatch({readRDS(paste0(dir_name,'P_fitness_TT.out.rds'))}, warning = function(w){
+      return(NULL)
+    })
+    Results_WGD <- tryCatch({readRDS(paste0(dir_name,'P_fitness_WGD.out.rds'))}, warning = function(w){
+      return(NULL)
+    })
+    Results_DM <- tryCatch({readRDS(paste0(dir_name,'P_fitness_DM.out.rds'))}, warning = function(w){
+      return(NULL)
+    })
+    if (!is.null(Results_TT)){
+      phy_TT  <- Results_TT$phylo
+      mf_TT <- Results_TT$meanFitness[1:length(phy_TT$tip.label)]
+      Fitness_true    <- as.numeric(phy_TT$fitness)
+      corr_true_TT[s_idx,i]<- cor(mf_TT,Fitness_true,method='spearman')
+      max_fitness[s_idx,i] <- max(Fitness_true)
+      max_fitness_TT[s_idx,i] <- max(mf_TT)
+      var_fitness[s_idx,i] <- var(Fitness_true)
+    }else{next}
+    if (!is.null(Results_DM)){
+      phy_DM  <- Results_DM$phylo
+      mf_DM <- Results_DM$meanFitness[1:length(phy_DM$tip.label)]
+      corr_true_DM[s_idx,i] <- cor(mf_DM,Fitness_true,method='spearman')
+      max_fitness_DM[s_idx,i] <- max(mf_DM)
+      if (length(phy_DM$fitness)>0) wrong_DM[s_idx,i] <-1
+    }
+    
+    if (!is.null(Results_WGD)){
+      phy_WGD  <- Results_WGD$phylo
+      mf_WGD <- Results_WGD$meanFitness[1:length(phy_WGD$tip.label)]
+      corr_true_WGD[s_idx,i] <- cor(mf_WGD,Fitness_true,method='spearman')
+      max_fitness_WGD[s_idx,i] <- max(mf_WGD)
+      corr_TT_WGD[s_idx,i] <- cor(mf_WGD,mf_TT, method = 'spearman')
+      if (length(phy_WGD$fitness)>0) wrong_WGD[s_idx,i] <-1
+    }
+    
+    
+    
+    
+    
+  
+  
+
+
+
+
+
+}
+
+
+
+```
+
+```{r}
+corr_true_TT_tot <- corr_true_TT[corr_true_TT != 0]
+corr_true_DM_tot <- corr_true_DM[corr_true_DM != 0]
+corr_true_WGD_tot <- corr_true_WGD[corr_true_WGD != 0]
+sample_mean_TT <- apply(corr_true_TT,1,function(x)mean(x[x!=0]))
+sample_var_TT  <- apply(corr_true_TT,1,function(x)var(x[x!=0]))
+sample_mean_DM <- apply(corr_true_DM,1,function(x)mean(x[x!=0]))
+sample_var_DM  <- apply(corr_true_DM,1,function(x)var(x[x!=0]))
+sample_mean_WGD <- apply(corr_true_WGD,1,function(x)mean(x[x!=0]))
+sample_var_WGD  <- apply(corr_true_WGD,1,function(x)var(x[x!=0]))
+max_fitness_tot <- max_fitness[max_fitness != 0]
+var_fitness_tot <- var_fitness[var_fitness != 0]
+
+p <- boxplot(list(TT = corr_true_TT_tot, DM = corr_true_DM_tot, WGD = corr_true_WGD_tot))
+
+p_mean_hist <- hist(sample_mean_TT)
+
+```
+
+
+### Panel C
+
+The illustrated example is plotted as "p" here.
+
+```{r}
+
+s_idx <- 8
+sim_num <- as.character(s_idx)
+print(sim_num)
+#for (i in 1:50){
+  i <- 1
+  case_num <- "8"
+  batch_num <- as.character(i)
+  
+  dir_name <- paste0("Results/spatial simulation results/SIM-",sim_num,"/")
+    
+    
+    Results_TT <- tryCatch({readRDS(paste0(dir_name,'P_fitness_TT.out.rds'))}, warning = function(w){
+      return(NULL)
+    })
+    Results_WGD <- tryCatch({readRDS(paste0(dir_name,'P_fitness_WGD.out.rds'))}, warning = function(w){
+      return(NULL)
+    })
+    Results_DM <- tryCatch({readRDS(paste0(dir_name,'P_fitness_DM.out.rds'))}, warning = function(w){
+      return(NULL)
+    })
+  phy_TT <- Results_TT$phylo
+  phy_DM <- Results_DM$phylo
+  phy_WGD <- Results_WGD$phylo
+  phy_TT$tip.label <- phy_DM$tip.label
+  phy_WGD_o <- readRDS(paste0(dir_name,"Tree-WGD.rds"))
+  tip_wgd <- phy_WGD_o$node_wgd[1:250]
+
+  Fitness_true    <- as.numeric(phy_TT$fitness)
+  mf_TT <- Results_TT$meanFitness[1:length(phy_TT$tip.label)]
+  mf_DM <- Results_DM$meanFitness[1:length(phy_DM$tip.label)]
+  mf_WGD <- Results_WGD$meanFitness[1:length(phy_WGD$tip.label)]
+
+  wgd_group <- ifelse(tip_wgd == 0, "WGD -", "WGD +")
+  
+  groups <- data.frame(
+    label = phy_TT$tip.label,
+    group = wgd_group
+  )
+  otu_groups <- split(groups$label, groups$group)
+  tree_grouped <- groupOTU(phy_TT, otu_groups)
+  tree_DM_grouped <- groupOTU(phy_DM, otu_groups)
+  tree_WGD_grouped <- groupOTU(phy_WGD, otu_groups)
+  
+  phy_TT$node_wgd <- c(tip_wgd, rep(-1, phy_TT$Nnode))
+  phy_DM$node_wgd <- c(tip_wgd, rep(-1, phy_DM$Nnode))
+  phy_WGD$node_wgd <- c(tip_wgd, rep(-1, phy_WGD$Nnode))
+  phy_TT <- label_internal_nodes(phy_TT)
+  phy_DM <- label_internal_nodes(phy_DM)
+  phy_WGD <- label_internal_nodes(phy_WGD)
+  
+  phy_TT$edge_wgd <- ifelse(phy_TT$edge_wgd == 0, "WGD -", "WGD +")
+  
+  edge_group_TT <- data.frame(
+    node = phy_TT$edge[,2],
+    group = phy_TT$edge_wgd
+  )
+  
+  
+  phy_DM$edge_wgd <- ifelse(phy_DM$edge_wgd == 0, "WGD -", "WGD +")
+  
+  edge_group_DM <- data.frame(
+    node = phy_DM$edge[,2],
+    group = phy_DM$edge_wgd
+  )
+  
+  phy_WGD$edge_wgd <- ifelse(phy_WGD$edge_wgd == 0, "WGD -", "WGD +")
+  
+  edge_group_WGD <- data.frame(
+    node = phy_WGD$edge[,2],
+    group = phy_WGD$edge_wgd
+  )
+  
+  
+  Tf_ring <- tibble(
+    label = phy_TT$tip.label,
+    fitness = Fitness_true
+  )
+  
+  
+  TT_ring <- tibble(
+    label = phy_TT$tip.label,
+    fitness = mf_TT
+  )
+  
+  DM_ring <- tibble(
+    label = phy_DM$tip.label,
+    fitness = mf_DM
+  )
+  
+  WGD_ring <- tibble(
+    label = phy_WGD$tip.label,
+    fitness = mf_WGD
+  )
+  
+  
+  p_Tf <- ggtree(phy_TT, layout = 'circular', size = 0)+ 
+    ggtitle("True ranking") +
+    theme(plot.title = element_text(size = 14, vjust = -2.5,hjust = 0.5, face = "bold"), 
+          legend.position = "bottom",
+          legend.key.size = unit(0.3, "cm"),
+          legend.title = element_text(size = 14, face = "bold"),
+          legend.text = element_text(size = 12, face = "bold")
+          ) + 
+    geom_fruit(
+        data = Tf_ring,
+        geom = geom_bar,
+        mapping = aes(y = label, x = fitness, fill = fitness),
+        orientation = "y",
+        stat = "identity",
+        width = 0.3
+      ) +
+    scale_fill_gradient(low = "#93C477", high = "#1F78B4") + 
+    guides(fill = guide_colorbar(order = 1,
+                                 barwidth = unit(6, "cm"),
+                                 barheight = unit(0.4,"cm"),
+                                 title.position = "top"), 
+           color = guide_legend(order = 2,
+                                title.position = "top"))
+  
+  p_Tf <- p_Tf %<+% edge_group_TT + geom_tree(aes(color = group), na.rm = TRUE,linewidth = 0.3) + scale_color_manual(values = c("WGD -" = "#435274", "WGD +" = "#A13F55"))
+  
+  
+
+  
+  
+  p_TT <- ggtree(phy_TT, layout = 'circular', size = 0)+
+    ggtitle(paste0("TT ranking (rho: ",format(round(cor(mf_TT,Fitness_true,method = 'spearman'), 4), nsmall = 4),")")) +
+    theme(plot.title = element_text(size = 14, vjust = -2.5,hjust = 0.5, face = "bold"), 
+          legend.position = "bottom",
+          legend.key.size = unit(0.3, "cm"),
+          legend.title = element_text(size = 14, face = "bold"),
+          legend.text = element_text(size = 12, face = "bold")
+          ) + 
+    geom_fruit(
+        data = TT_ring,
+        geom = geom_bar,
+        mapping = aes(y = label, x = fitness, fill = fitness),
+        orientation = "y",
+        stat = "identity",
+        width = 0.3
+      ) +
+    scale_fill_gradient(low = "#93C477", high = "#1F78B4") + 
+    guides(fill = guide_colorbar(order = 1,
+                                 barwidth = unit(6, "cm"),
+                                 barheight = unit(0.4,"cm"),
+                                 title.position = "top"), 
+           color = guide_legend(order = 2, 
+                                title.position = "top"))
+  p_TT <- p_TT %<+% edge_group_TT + geom_tree(aes(color = group), na.rm = TRUE,linewidth = 0.3) + scale_color_manual(values = c("WGD -" = "#435274", "WGD +" = "#A13F55"))
+  
+  rng <- range(DM_ring$fitness, na.rm = TRUE)
+  b_rng <- c(rng[1] + 0.05*diff(rng), rng[2] - 0.05*diff(rng))
+  
+  p_DM <- ggtree(phy_DM, layout = 'circular', size = 0)+
+    ggtitle(paste0("DM ranking (rho: ",format(round(cor(mf_DM,Fitness_true,method = 'spearman'), 4), nsmall = 4),")")) +
+    theme(plot.title = element_text(size = 14, vjust = -2.5,hjust = 0.5, face = "bold"), 
+          legend.position = "bottom",
+          legend.key.size = unit(0.3, "cm"),
+          legend.title = element_text(size = 14, face = "bold"),
+          legend.text = element_text(size = 12, face = "bold")
+          ) + 
+    geom_fruit(
+        data = DM_ring,
+        geom = geom_bar,
+        mapping = aes(y = label, x = fitness, fill = fitness),
+        orientation = "y",
+        stat = "identity",
+        width = 0.3
+      ) +
+    scale_fill_gradient(low = "#93C477", high = "#1F78B4",
+                        limits = rng,
+                        breaks = b_rng,
+                        labels = c("Low","High"),
+                        name = "Fitness") + 
+    guides(fill = guide_colorbar(order = 1,
+                                 barwidth = unit(6, "cm"),
+                                 barheight = unit(0.4,"cm"),
+                                 title.position = "top"), 
+           color = guide_legend(order = 2,
+                                title.position = "top"))
+  p_DM <- p_DM %<+% edge_group_DM + geom_tree(aes(color = group), na.rm = TRUE, linewidth = 0.3) + scale_color_manual(values = c("WGD -" = "#435274", "WGD +" = "#A13F55"))
+  
+  p_WGD <- ggtree(phy_WGD, layout = 'circular', size = 0)+
+    ggtitle(paste0("WGD ranking (rho: ",format(round(cor(mf_WGD,Fitness_true,method = 'spearman'), 4), nsmall = 4),")")) +
+    theme(plot.title = element_text(size = 14, vjust = -2.5,hjust = 0.5, face = "bold"), 
+          legend.position = "bottom",
+          legend.key.size = unit(0.3, "cm"),
+          legend.title = element_text(size = 14, face = "bold"),
+          legend.text = element_text(size = 12, face = "bold")
+          ) + 
+    geom_fruit(
+        data = WGD_ring,
+        geom = geom_bar,
+        mapping = aes(y = label, x = fitness, fill = fitness),
+        orientation = "y",
+        stat = "identity",
+        width = 0.3
+      ) +
+    scale_fill_gradient(low = "#93C477", high = "#1F78B4") + 
+    guides(fill = guide_colorbar(order = 1,
+                                 barwidth = unit(6, "cm"),
+                                 barheight = unit(0.4,"cm"),
+                                 title.position = "top"), 
+           color = guide_legend(order = 2,
+                                title.position = "top"))
+  p_WGD <- p_WGD %<+% edge_group_WGD + geom_tree(aes(color = group), na.rm = TRUE, linewidth = 0.3, ladderize = FALSE) + scale_color_manual(values = c("WGD -" = "#435274", "WGD +" = "#A13F55"))
+  
+  
+  
+  
+  shard_legend <- cowplot::get_legend(p_DM)
+  
+  p_Tf_n <- p_Tf + theme(legend.position = "none")
+  p_TT_n <- p_TT + theme(legend.position = "none")
+  p_DM_n <- p_DM + theme(legend.position = "none")
+  p_WGD_n <- p_WGD + theme(legend.position = "none")
+  
+  
+#  p <- (p_Tf|p_mf) + 
+#    plot_annotation(title = paste0("Spearman correlation: ", corr_true_ori[i])) &
+#    theme(plot.title = element_text(hjust = 0.5))
+
+#}
+  title_grob <- textGrob(
+    "Non-Spatial Simulation Analysis",
+    gp = gpar(fontface = "bold", fontsize = 16),
+    just = "center")
+  
+  p <- grid.arrange(
+    arrangeGrob(p_Tf_n,p_TT_n,p_DM_n,p_WGD_n, nrow = 1), 
+    shard_legend,
+    title_grob,
+    heights = c(0.5,0.1,0.1),
+    ncol = 1
+  )
+
+  #ggsave("/projects/standard/ruping/shared/wu000766/Fitness_ranking/Simulated_COMET/wgd/Figures/Fitness_plot.svg", plot = p, width = 16, height = 4)
+#}
+```
+
+
+### Panel E
+
+Both WGD- and WGD+ rootogram are plotted here.
+
+```{r}
+s_idx <- 8
+sim_num <- as.character(s_idx)
+print(sim_num)
+#for (i in 1:50){
+  i <- 1
+  case_num <- "8"
+  batch_num <- as.character(i)
+  
+  dir_name <- paste0("Results/spatial simulation results/SIM-",sim_num,"/")
+    DM_name <- paste0(dir_name,"Tree-WGD.rds") # Note this is the original WGD tree before ultrametric tree conversion.
+    TT_name <- paste0(dir_name,"Tree-TT.rds")
+    # Here we use true total time tree to determine the true overall time horizon
+    
+    
+    
+    
+    #Ori_tree <- read.tree(name)
+    #Ori_tree <- readRDS(name)
+    DM_tree  <- readRDS(DM_name)
+    TT_tree  <- readRDS(TT_name)
+    WGD_file <- paste0(dir_name,"ultra-tree.csv")
+    
+    #discrete_tree <- readRDS(discrete_file)
+    #WGD_R_tree <- readRDS(WGD_R_file)
+    WGD_Results <- read.csv(WGD_file, header = FALSE)
+    WGD_Results <- WGD_Results[,1]
+    WGD_tree <- DM_tree
+    e1 <- WGD_tree$edge[,1]
+    e2 <- WGD_tree$edge[,2]
+    li <- length(WGD_Results)
+    
+    WGD_ages <- c(rep(0,li),1,WGD_Results[3:length(WGD_Results)])
+    WGD_tree$edge.length <- WGD_ages[e1] - WGD_ages[e2]
+    
+
+y <- DM_tree$edge.length[DM_tree$edge_wgd == 0]
+t <- WGD_tree$edge.length[DM_tree$edge_wgd == 0]
+
+
+WGD_rates <- WGD_Results[1]
+
+tau <- WGD_rates*t
+n   <- length(y)
+
+k_max <- max(y)
+k <- 0:k_max
+O <- tabulate(y+1, nbins = k_max+1)
+E <- sapply(k, function(kk){
+  sum(dpois(kk,lambda = tau))
+})
+
+
+
+#svg("Simulated_COMET/wgd/Figures/SIM_rooto.svg", width = 9, height = 4)
+
+par(mfrow = c(1,2), oma = c(0,0,3,0))
+
+y <- DM_tree$edge.length[DM_tree$edge_wgd == 0]
+t <- WGD_tree$edge.length[DM_tree$edge_wgd == 0]
+
+
+WGD_rates <- WGD_Results[1]
+
+tau <- WGD_rates*t
+n   <- length(y)
+
+k_max <- max(y)
+k <- 0:k_max
+O <- tabulate(y+1, nbins = k_max+1)
+E <- sapply(k, function(kk){
+  sum(dpois(kk,lambda = tau))
+})
+
+sqrt_exp <- sqrt(E)
+sqrt_obs <- sqrt(O)
+
+signs <- sign(sqrt_exp - sqrt_obs)
+signs_nWGD<- runs.test(as.factor(signs))
+
+plot(k, sqrt_exp,
+     type = "n",
+     ylim = range(c(sqrt_exp, sqrt_exp - sqrt_obs)),
+     xlab = "WGD- Branch Length",
+     ylab = "\u221AFrequency",
+     main = "",
+     font.lab = 2)
+
+# expected curve
+lines(k, sqrt_exp, lwd = 2)
+
+# hanging bars
+segments(x0 = k,
+         y0 = sqrt_exp,
+         x1 = k,
+         y1 = sqrt_exp - sqrt_obs,
+         lwd = 3,
+         col = "#435274") # WGD: #F8766D, non-WGD: #00BFC4
+
+abline(h = 0, lty = 2)
+
+legend("topright",
+       legend = c("Expected","Observed"),
+       col = c("black","#435274"),
+       lty = 1,
+       lwd = 3,
+       bty = "n")
+
+
+y <- DM_tree$edge.length[DM_tree$edge_wgd == 1]
+t <- WGD_tree$edge.length[DM_tree$edge_wgd == 1]
+
+
+WGD_rates <- WGD_Results[2]
+
+tau <- WGD_rates*t
+n   <- length(y)
+
+k_max <- max(y)
+k <- 0:k_max
+O <- tabulate(y+1, nbins = k_max+1)
+E <- sapply(k, function(kk){
+  sum(dpois(kk,lambda = tau))
+})
+
+sqrt_exp <- sqrt(E)
+sqrt_obs <- sqrt(O)
+
+plot(k, sqrt_exp,
+     type = "n",
+     ylim = range(c(sqrt_exp, sqrt_exp - sqrt_obs)),
+     xlab = "WGD+ Branch Length",
+     ylab = "",
+     font.lab = 2)
+
+# expected curve
+lines(k, sqrt_exp, lwd = 2)
+
+# hanging bars
+segments(x0 = k,
+         y0 = sqrt_exp,
+         x1 = k,
+         y1 = sqrt_exp - sqrt_obs,
+         lwd = 3,
+         col = "#A13F55") # WGD: #F8766D, non-WGD: #00BFC4
+
+abline(h = 0, lty = 2)
+
+
+mtext("Hanging Rootogram for Spatial Simulation",
+      side = 3, outer = TRUE, line = 1, cex = 1.3, font = 2)
+
+legend("topright",
+       legend = c("Expected","Observed"),
+       col = c("black","#A13F55"),
+       lty = 1,
+       lwd = 3,
+       bty = "n")
+
+
+
+
+#dev.off()
+
+
+
+
+signs <- sign(sqrt_exp - sqrt_obs)
+signs_WGD <- runs.test(as.factor(signs))
+```
+
+
+### Panel H
+
+We then examine the relationship between sampling variability and inference accuracy. 
+Two types of sampling are consider:
+1. Sample from original population
+2. Subsample from sampled tree
+
+#### Collecting all sampling inference results
+
+```{r}
+#corr_true_re <- matrix(0, nrow = 50, ncol = 50)
+corr_true_ori <- rep(0,50)
+corr_ori_sub <- matrix(0, nrow = 50, ncol = 50)
+corr_ori_re_sub <- matrix()
+
+
+for (ii in 1:50){
+  batch_num <- as.character(ii)
+  dir_name <- paste0("Results/spatial simulation results/SIM-",batch_num,"/")
+  TT_name <- paste0(dir_name,"P_fitness_TT.out.rds")
+  Results_TT <- readRDS(TT_name)
+  #phy_TT <- readRDS(TT_name)
+  phy_TT <- Results_TT$phylo
+  mf_TT <- Results_TT$meanFitness[1:length(phy_TT$tip.label)]
+  Fitness_true <- as.numeric(phy_TT$fitness)
+  corr_true_ori[ii] <- cor(mf_TT,Fitness_true,method='spearman')
+  for (jj in 1:50){
+    sample_run_num <- as.character(jj)
+    
+    
+    
+    dir_name_sub <- paste0("Results/spatial simulation results/SIM-",batch_num,"/Subsampling/")
+    TT_name_sub <- paste0(dir_name_sub,"P_fitness-",sample_run_num,".out.rds")
+    Results_TT_sub <- readRDS(TT_name_sub)
+    phy_TT_sub <- Results_TT_sub$phylo
+    index_sub <- match(as.numeric(phy_TT_sub$tip.label), phy_TT$tip.label)
+    mf_TT_sub <- Results_TT_sub$meanFitness[1:length(phy_TT_sub$tip.label)]
+    
+    
+    corr_ori_sub[jj,ii] <- cor(mf_TT_sub,mf_TT[index_sub],method='spearman')
+    
+    
+    
+    
+  }
+}
+
+```
+
+
+#### Visualization 
+
+```{r}
+
+
+
+
+
+
+sub_df <- data.frame(
+  idx = 1:50,
+  Acc = corr_true_ori,
+  sub_var = apply(corr_ori_sub,2,var)
+)
+
+sub_df$color <- "black"
+
+cor_test <- cor.test(sub_df$sub_var, sub_df$Acc)
+label_text <- paste0(
+  "Pearson = ", round(cor_test$estimate, 2),
+  "\nP = ", signif(cor_test$p.value, 2)
+)
+
+p_sub2 <- ggplot(sub_df, aes(x = Acc, y = sub_var)) +
+  geom_point(aes(color = color), size = 2.5)+
+  scale_color_identity()+
+  geom_smooth(method = "lm", se = TRUE) +
+  annotate(
+    "text",
+    x = max(sub_df$Acc) * 0.8,
+    y = max(sub_df$sub_var) * 0.9,
+    label = label_text,
+    size = 5
+  ) +
+  labs(
+    y = "Subsampling Variance",
+    x = "Prediction Accuracy (Spearman)"
+  ) +
+  theme_bw()+
+  theme(
+    axis.text = element_text(size = 14),
+    plot.title = element_text(size = 18, face = "bold")
+  ) + scale_y_log10()
+
+#ggsave("MATLAB/Simulation/Figures/Var_Acc_Re.svg",plot = p_re, width = 7, height = 4)
+#ggsave("MATLAB/Simulation/Figures/Var_Acc_Sub.svg",plot = p_sub, width = 7, height = 4)
+
+
+```
+
+
+
