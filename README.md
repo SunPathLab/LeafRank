@@ -1,5 +1,9 @@
-
-# Intro
+<table border="0" cellspacing="0" cellpadding="0">
+  <tr>
+    <td><img src="assets/leafrank_logo.svg" width="100" alt="LeafRank logo"></td>
+    <td valign="middle"><h1 style="margin:0;">LeafRank</h1></td>
+  </tr>
+</table>
 
 LeafRank is a probabilistic framework for single cell phylogeny, inferring
 the relative fitness of sampled tumor cells. LeafRank takes as input a
@@ -181,3 +185,10 @@ WGD_tree <- get_ultrametric(phy, MAT_path = "MATLAB/ultra-tree.csv", phy_path = 
 ```
 
     ## [1] "Ultrametric tree Step 2 is successfully stored at <Exemplary Trees/Tree-WGD.rds>."
+
+
+## Reference
+
+Chenyu Wu, Kevin Leder, Zicheng Wang, and Ruping Sun (2026)
+**LeafRank: A phylodynamic framework for inferring relative fitness from single-cell phylogenies in chromosomally unstable tumors**
+[BIORXIV/2026/736651, Jul. 2026](https://doi.org/10.64898/2026.07.06.736651)
