@@ -115,7 +115,7 @@ available computing resource of the running environment, eg
 using 20 workers is about 30 minutes.
 
 ``` r
-outcome = LeafRank(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, nu, T_vector, non_negativity_cutoff, num_threads)
+outcome = LeafRank(phy, outFile, rho, d_t, time_scale, b_rates, d_rates, nu, T_vector, non_negativity_cutoff, n_threads)
 
 ```
 
